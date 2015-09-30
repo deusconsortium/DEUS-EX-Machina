@@ -16,6 +16,8 @@ It is composed of the following softwares:
 
 - Splotch: C++ raytracer to make images/movies from particle files, modified to read DEUS file formats
 
+- GraphicTools: Python code to display density/mass/velocity profiles
+
 
 
 
