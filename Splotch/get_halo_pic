@@ -1,7 +1,0 @@
-#!/bin/sh
-cd /home/jpasdeloup/splotch-6.0
-cp  halo.par temp.par
-echo infile=$1 >> temp.par
-./Splotch5-generic temp.par
-cp halo0000.tga $2
-
