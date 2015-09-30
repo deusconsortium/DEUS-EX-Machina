@@ -440,7 +440,7 @@ void Simu::profileAnalysis(const string voids_file,const string directory_name,i
     
     WaitingBar bar(multi.nCubes());
     #pragma omp parallel for num_threads(NumProc)
-    for(unsigned int i(0); i < multi.nCubes() ; i++)
+    for(unsigned int i=0; i < multi.nCubes() ; i++)
     {
         multi.cubes(i)->readParticles(FOFParticles::READ_POS | FOFParticles::READ_IDS | FOFParticles::READ_VEL);
         bar.Up();
@@ -465,7 +465,7 @@ void Simu::profileAnalysis(const string voids_file,const string directory_name,i
     
     bar.Reset(void_position.size());
     #pragma omp parallel for num_threads(NumProc)
-    for(unsigned int i(0) ; i < void_position.size() ; i++)
+    for(unsigned int i=0 ; i < void_position.size() ; i++)
     {
         ProfileAroundPosition(void_position[i],_f[i],_v[i],multi,r_ramses);
         bar.Up();
