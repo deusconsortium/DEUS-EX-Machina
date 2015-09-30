@@ -1,0 +1,6 @@
+[submodule "FOFReaderLib"]
+	path = FOFReaderLib
+	url = https://github.com/pasdeloup/FOFReaderLib
+[submodule "splotch"]
+	path = splotch
+	url = https://github.com/deusconsortium/splotch.git
