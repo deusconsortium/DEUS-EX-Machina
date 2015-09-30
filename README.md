@@ -14,7 +14,7 @@ It is composed of the following softwares:
 
 - FOFReaderLib: C++ library to read the different file DEUS formats, include FOFextrema.
 
-- Splotch (to be added): C++ raytracer to make images/movies from particle files, modified to read DEUS file formats
+- Splotch: C++ raytracer to make images/movies from particle files, modified to read DEUS file formats
 
 
 

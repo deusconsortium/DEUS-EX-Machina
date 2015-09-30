@@ -1,0 +1,111 @@
+############################
+# Input/Output Options
+############################
+
+# Input cube file/directory
+infile=/efiler1/analysis/boxlen648_n2048_wcdmw7/post/fof/output_00090/
+#infile=/efiler1/Babel_le/boxlen648_n2048_lcdmw7/cube_00090/
+
+# Input strct/masst directory (if exists)
+#infile_halos=/efiler1/Babel_le/boxlen648_n2048_lcdmw7/post/fof/output_00090/
+infile_halos=/efiler1/analysis/boxlen648_n2048_wcdmw7/post/fof/output_00090
+
+# Output file
+outfile=/efiler1/analysis/visu/films/flySpotchWCDM648/fly648  #
+xres=1920
+yres=1080
+
+scale = 1
+
+maxDOF = 0.3
+
+#minX = 65.74276954
+#maxX = 80.74276954
+#minY = 47.3625
+#maxY = 57.3625
+#minZ = 5.83609495
+#maxZ = 20.83609495
+
+
+############################
+# Display Options
+############################
+
+# 6: mesh reader, 7: hdf7, 14: fof_cube, 11: fof_strct
+simtype=14
+
+ptypes=2
+resolution=2048
+
+############################
+# Output Options
+############################
+
+# 0: TGA uncompressed, 1: PPM ASCII, 2: PPM binary, 3: TGA runlength-compressed
+pictype=0
+
+gray_absorption=0.5
+
+
+############################
+# Visualization properties
+############################
+a_eq_e=t
+
+# 0: nosort, 1: by z, 2: by value, 3: by reversed value, 4: by size
+sort_type=0
+
+color_log0=TRUE
+color_min0=-3.05093
+color_max0= 3.45127
+palette0=palettes/Blue.pal #palettes/OldSplotch.pal
+intensity_log0=true
+brightness0=0.00005
+
+color_log1=TRUE
+color_min1=-3.89606
+color_max1= 3.92881
+palette1=palettes/OldSplotch.pal #palettes/OldSplotch.pal
+intensity_log1=true
+brightness1=0.00005
+
+############################
+# Geometrical setup
+############################
+
+#camera_x=81.4208 
+#camera_y=52.3625 
+#camera_z=98.60677
+
+camera_x=0.814208 
+camera_y=0.523625 
+camera_z=0.9851677
+
+#0.814208 0.523625 0.9851677
+
+#camera_x=      80.742769536676 #6.25 #0.0
+#camera_y=      52.3625 #6.25 #0.0
+#camera_z=      5.8360949467511 #0.001
+#lookat_x=      75.4208 #6.25 #0.0
+#lookat_y=      52.3625 #6.25 #0.0
+#lookat_z=      8.60677 #0.1
+
+lookat_x=      0.754208 #6.25 #0.0
+lookat_y=      0.523625 #6.25 #0.0
+lookat_z=      0.860677 #0.1
+
+
+sky_x=0.0
+sky_y=1.0
+sky_z=0.0
+
+fov=40
+
+periodic=FALSE
+projection=true
+
+scene_file=fly_path.txt
+scene_start=0
+scene_incr=1
+
+#EyeSeparation = 0.8
