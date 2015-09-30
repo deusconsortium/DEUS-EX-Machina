@@ -99,7 +99,7 @@ endif
 #--------------------------------------- Here we go
 
 OPTIONS = $(OPTIMIZE) $(OPT)
-EXEC = Splotch6-$(SYSTYPE)
+EXEC = Splotch6
 EXEC1 = Galaxy
 
 FOFReaderSRC= $(wildcard reader/FOFReaderLib/FOFReaderLib/FOFFiles/*.cpp) $(wildcard reader/FOFReaderLib/FOFReaderLib/DEUSSimulation/*.cpp)
