@@ -26,13 +26,15 @@ class Simu
 {
 public:
     Simu();
-    Simu(int const Boxlen, int const Npart,string const cosmo);
     Simu(int const Boxlen, int const Npart,string const cosmo,int const output);
     virtual ~Simu();
    
     bool load(int const Boxlen, int const Npart,string const cosmo,int output = -1);
     string saveHalosPositions(const int min_particles = 0, const int max_particles = -1)  const;
     void profileAnalysis(const string position_file,const string directory_name = "",int const NobjectsMax = -1);
+    
+    float getR1MassCoarseGrid(vector<float> & f_profile, vector<float> & r_ramses,bool isOverDensity);
+    float getR1DensityCoarseGrid(vector<float> & f_profile, vector<float> & r_ramses,bool isOverDensity);
     
     //setters et getters
     void setDataDirectory(const string data){
@@ -46,9 +48,15 @@ public:
     string getCosmo()   const{return _cosmo;}
     int getOutput() const{return _output;}
     
+    void setNumpyCores(int nc){ _Numpy_cores = nc;}
+    
+    void setDrCoarseGrid(float dr){ _DrCoarseGrid = dr;}
+    void setRmaxCoarseGrid(float Rmax){ _RmaxCoarseGrid = Rmax;}
+    void setR0CoarseGrid(float r0){ _R0CoarseGrid = r0;}
+    
+
+    
 private:    
-    float getR1_ramses(vector<float> & f_profile, vector<float> & r_ramses,bool isHalo);
-    float getR1_delta(vector<float> & f_profile, vector<float> & r_ramses,bool isHalo);
     void ProfileAroundPosition(FVector Position ,vector<float> & f,vector<float> & v,FOFMultiCube & multi,vector<float> const radius_ramses);
 
     //les propriétés de la simu
@@ -64,8 +72,7 @@ private:
     float Mpc,c0,SunMass; 
     
     //les constantes de tracage
-    int _Npoints;
-    float _dr_ramses,_r0_ramses;
+    float _DrCoarseGrid,_R0CoarseGrid,_RmaxCoarseGrid;
 };
 
 #endif	/* SIMU_H */

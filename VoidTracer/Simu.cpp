@@ -7,121 +7,69 @@
 
 #include "Simu.h"
 
-Simu::Simu():_data_path("/data_bingo/Babel/"),_simu_name(""),_save_name(""),_cosmo(""),_Numpy_cores(32),_boxlen(0),_npart(0),_output(0),_Npoints(30),_dr_ramses(2.0),_r0_ramses(2.0),_isOverDensity(false)
+Simu::Simu():_data_path("/data_bingo/Babel/")
 {
-    //chargement du fichier constants
+    _simu_name = "";
+    _save_name = "";
+    _cosmo = "";
+    _Numpy_cores = 32;
+    _boxlen = 0;
+    _npart = 0;
+    _output = 0;
+    _DrCoarseGrid = 2.0;
+    _R0CoarseGrid = 2.0,
+    _isOverDensity = false;
+    _RmaxCoarseGrid = 100.;
+    _Numpy_cores = 32;
     
-    ifstream constant_file( "data/constants.txt" ); 
-    
-    if ( constant_file )
-    {
-        string ligne,poubelle,utile; // variable contenant chaque ligne lue
-        constant_file >> poubelle >> poubelle >> Mpc;
-        constant_file >> poubelle >> poubelle >> SunMass;
-        constant_file >> poubelle >> poubelle >> c0;
-        constant_file >> poubelle >> poubelle >> _Numpy_cores;
-        constant_file >> poubelle >> poubelle >> _Npoints;
-        constant_file >> poubelle >> poubelle >> _dr_ramses;
-        constant_file >> poubelle >> poubelle >> _r0_ramses;
-        constant_file.close();
-    }
-    else
-    {
-        cout<<endl<<"WARNING : file constants.txt doesn't exists"<<endl<<endl;
-        Mpc = 3.08567758e+22;
-        SunMass	= 1.989e+30;
-        c0 = 299792458.0; 
-    }
+    Mpc = 3.08567758e+22;
+    SunMass	= 1.989e+30;
+    c0 = 299792458.0; 
 }
 
-Simu::Simu(int const Boxlen, int const Npart,string const cosmo,int const output):_data_path("/data_bingo/Babel/"),_simu_name(""),_save_name(""),_cosmo(""),_Numpy_cores(32),_boxlen(0),_npart(0),_output(0),_Npoints(30),_dr_ramses(2.0),_r0_ramses(2.0),_isOverDensity(false)
+Simu::Simu(int const Boxlen, int const Npart,string const cosmo,int const output)
 {
-    //chargement du fichier constants
+    _simu_name = "";
+    _save_name = "";
+    _cosmo = cosmo;
+    _Numpy_cores = 32;
+    _boxlen = Boxlen;
+    _npart = Npart;
+    _output = output;
+    _DrCoarseGrid = 2.0;
+    _R0CoarseGrid = 2.0,
+    _isOverDensity = false;
+    _RmaxCoarseGrid = 100.;
+    _Numpy_cores = 32;
     
-    ifstream constant_file( "data/constants.txt" ); 
-    
-    if ( constant_file )
-    {    
-        string ligne,poubelle,utile; // variable contenant chaque ligne lue
-        constant_file >> poubelle >> poubelle >> Mpc;
-        constant_file >> poubelle >> poubelle >> SunMass;
-        constant_file >> poubelle >> poubelle >> _Numpy_cores;
-        constant_file >> poubelle >> poubelle >> c0;
-        constant_file.close();
-    }
-    else
-    {
-        cout<<endl<<"WARNING : file constants.txt doesn't exists"<<endl<<endl;
-        Mpc = 3.08567758e+22;
-        SunMass	= 1.989e+30;
-        _Numpy_cores = 24;
-        c0 = 299792458.0; 
-    }
+    Mpc = 3.08567758e+22;
+    SunMass	= 1.989e+30;
+    c0 = 299792458.0; 
     
     load(Boxlen,Npart,cosmo,output);
 }
-
-
-Simu::Simu(int const Boxlen, int const Npart,string const cosmo):_data_path("/data_bingo/Babel/"),_simu_name(""),_save_name(""),_cosmo(""),_Numpy_cores(32),_boxlen(0),_npart(0),_output(0),_Npoints(30),_dr_ramses(2.0),_r0_ramses(2.0),_isOverDensity(false)
-{
-    //chargement du fichier constants
-    
-    ifstream constant_file( "data/constants.txt" ); 
-    
-    if ( constant_file )
-    {    
-        string ligne,poubelle,utile; // variable contenant chaque ligne lue
-        constant_file >> poubelle >> poubelle >> Mpc;
-        constant_file >> poubelle >> poubelle >> SunMass;
-        constant_file >> poubelle >> poubelle >> _Numpy_cores;
-        constant_file >> poubelle >> poubelle >> c0;
-        constant_file.close();
-    }
-    else
-    {
-        cout<<endl<<"WARNING : file constants.txt doesn't exists"<<endl<<endl;
-        Mpc = 3.08567758e+22;
-        SunMass	= 1.989e+30;
-        _Numpy_cores = 24;
-        c0 = 299792458.0; 
-    }
-    
-    load(Boxlen,Npart,cosmo);
-}
- 
  
 Simu::~Simu() 
 {
 }
 
 bool Simu::load(int const Boxlen, int const Npart,string cosmo,int output)
-{
-    //cas output = -1
-    if(output == -1)
-        output = Tools::getLastOutput(Boxlen,Npart,cosmo);
-    
+{    
     //conversion de cosmo :
     _boxlen = Boxlen;
     _npart = Npart;
     _cosmo = cosmo;
     _output = output;    
     
-    _simu_name= _data_path + "boxlen"+Tools::IntToString(_boxlen)+"_n"+Tools::IntToString(_npart)+"_"+_cosmo;
-    
-    //+"/post/fof/output";
-   
+    _simu_name= _data_path + "boxlen"+Tools::IntToString(_boxlen)+"_n"+Tools::IntToString(_npart)+"_"+_cosmo;   
     _save_name = "boxlen"+Tools::IntToString(_boxlen)+"_n"+Tools::IntToString(_npart)+"_"+_cosmo;
 
-    
-    //chargement du fichier info
-    
+    //chargement du fichier info    
     string info_path = _simu_name + "/cube"+ Tools::IntToString(_output,true) + "/info"+Tools::IntToString(_output,true)+".txt";
 
     ifstream info_file( info_path.c_str() ); 
     if ( info_file )
-    {
-        cout<<"Unit file well loaded..."<<endl;
-        
+    {        
         string ligne,poubelle,utile; // variable contenant chaque ligne lue
         for(int i(0); i<9 ; i++)
                 getline( info_file, ligne);
@@ -136,13 +84,11 @@ bool Simu::load(int const Boxlen, int const Npart,string cosmo,int output)
         info_file >> poubelle >> poubelle >> _data.unit_d;
         info_file >> poubelle >> poubelle >> _data.unit_t;
         
-        
         if(_data.unit_t == 0.0)
         {
             cout<<endl<<"\n\nERROR !!  no time unit"<<endl<<endl;
             return false;
-        }
-            
+        }            
 
         //transcription de la densite en masse :
         
@@ -178,7 +124,6 @@ bool Simu::load(int const Boxlen, int const Npart,string cosmo,int output)
         
     return true;
 }
-
 
 void Simu::ProfileAroundPosition(FVector Position ,vector<float> & f,vector<float> & v,FOFMultiCube & multi,vector<float> const radius_ramses)
 {
@@ -307,15 +252,15 @@ string Simu::saveHalosPositions(const int min_particles, const int max_particles
     return "";
 }
 
-void Simu::profileAnalysis(const string voids_file,const string directory_name,int const Nvoidmax)
+void Simu::profileAnalysis(const string position_file,const string directory_name,int const Nmax)
 {
     const unsigned int NumProc = _Numpy_cores;
     _save_name = _save_name + directory_name;
     
-    string file_path = "data/PositionFiles/" + voids_file;
+    string file_path = "data/PositionFiles/" + position_file;
     string new_name = "data/PositionFiles/original.txt";
     
-    int Nvoids = Tools::getNbLines(file_path);
+    int Nobjects = Tools::getNbLines(file_path);
     ifstream file(file_path.c_str());
     
     if(!file)
@@ -325,18 +270,18 @@ void Simu::profileAnalysis(const string voids_file,const string directory_name,i
     }
     
     //gestion du nombre de vides
-    if(Nvoidmax >= 0 and Nvoidmax < Nvoids)
+    if(Nmax >= 0 and Nmax < Nobjects)
     {
         vector<int> used_voids;
-        cout << "Selecting randomly " << Nvoidmax << " positions on " << Nvoids << " ..."<< endl;
+        cout << "Selecting randomly " << Nmax << " positions on " << Nobjects << " ..."<< endl;
         //création du tableau des valeurs disponibles
-        vector<unsigned int> original(Nvoids);
-        for(unsigned int i(0) ; i < Nvoids ; i++)
+        vector<unsigned int> original(Nobjects);
+        for(unsigned int i(0) ; i < Nobjects ; i++)
             original[i] = i;
         
         //on remplit le tableau
-        WaitingBar bar1(Nvoidmax);
-        for(unsigned int i(0) ; i < Nvoidmax ; i++)
+        WaitingBar bar1(Nmax);
+        for(unsigned int i(0) ; i < Nmax ; i++)
         {
             unsigned int index = floor(Tools::Random(0,original.size()));
             used_voids.push_back(index);
@@ -344,9 +289,9 @@ void Simu::profileAnalysis(const string voids_file,const string directory_name,i
             bar1.Up();
         }
 
-        vector<float> X(Nvoids);
-        vector<float> Y(Nvoids);
-        vector<float> Z(Nvoids);
+        vector<float> X(Nobjects);
+        vector<float> Y(Nobjects);
+        vector<float> Z(Nobjects);
         
         cout<<endl<<"reading original file ..." << endl;
         
@@ -374,7 +319,7 @@ void Simu::profileAnalysis(const string voids_file,const string directory_name,i
             return;
         }
         cout<<"filling the new file ..." << endl;
-        for(unsigned int i(0) ; i < Nvoidmax ; i++)
+        for(unsigned int i(0) ; i < Nmax ; i++)
             new_file << X[used_voids[i]] << "\t" << Y[used_voids[i]] << "\t" << Z[used_voids[i]]  << endl;
         cout<<"done. Closing files"<<endl;
         new_file.close();
@@ -382,13 +327,14 @@ void Simu::profileAnalysis(const string voids_file,const string directory_name,i
     else
         file.close();
     
+    int _Npoints = floor((_RmaxCoarseGrid - _R0CoarseGrid)/_DrCoarseGrid) + 1;
+    
     vector<float> r_ramses(_Npoints);
     float Rcell = 1.0/_npart;
-    float dr_ramses = _dr_ramses*Rcell;
-    r_ramses[0] = _r0_ramses*Rcell;    
+    r_ramses[0] = _R0CoarseGrid*Rcell;    
     
     for(unsigned int i(1) ; i < _Npoints ; i++)
-        r_ramses[i] = r_ramses[i-1] + dr_ramses;
+        r_ramses[i] = r_ramses[i-1] + _DrCoarseGrid*Rcell;
     
     vector<FVector> void_position;
     
@@ -432,7 +378,7 @@ void Simu::profileAnalysis(const string voids_file,const string directory_name,i
         
         if(Tools::fileExists(new_name))
         {
-            rename(file_path.c_str(),(file_path.substr(0,file_path.size()-4)+"_"+Tools::IntToString(Nvoidmax,0,false)+".txt").c_str());
+            rename(file_path.c_str(),(file_path.substr(0,file_path.size()-4)+"_"+Tools::IntToString(Nmax,0,false)+".txt").c_str());
             rename(new_name.c_str(),file_path.c_str());
         }
         return;
@@ -447,7 +393,7 @@ void Simu::profileAnalysis(const string voids_file,const string directory_name,i
     }
     
     cout<<endl<<"------------------------------------"<<endl<<endl;
-    cout << "Begining the profile tracer with : \n\t- Npoints = " << _Npoints << "\n\t- dr = " <<_dr_ramses <<"/npart\n\t- N = " << void_position.size() << endl;
+    cout << "Begining the profile tracer with : \n\t- Npoints = " << _Npoints << "\n\t- dr = " << _DrCoarseGrid <<"/npart\n\t- N = " << void_position.size() << endl;
 
     vector<float> _f[void_position.size()];
     vector<float> _v[void_position.size()];
@@ -458,9 +404,6 @@ void Simu::profileAnalysis(const string voids_file,const string directory_name,i
             _v[i].push_back(0.0);
         }
     cout<<"------------------------------------"<<endl<<endl;
-
-    
-    
     cout<<"\ncomputing profiles ... "<<endl;
     
     bar.Reset(void_position.size());
@@ -486,7 +429,7 @@ void Simu::profileAnalysis(const string voids_file,const string directory_name,i
    
     for(unsigned int i(0) ; i < void_position.size() ; i++)
     {
-        R1[i] = getR1_ramses(_f[i],r_ramses,_isOverDensity);
+        R1[i] = getR1MassCoarseGrid(_f[i],r_ramses,_isOverDensity);
         if(R1[i] > 0.0)
         {
             int index = -1;
@@ -610,12 +553,12 @@ void Simu::profileAnalysis(const string voids_file,const string directory_name,i
     //si il existe un fichier appelé 'original.txt' alors il faut renommer
     if(Tools::fileExists(new_name))
     {
-        rename(file_path.c_str(),(file_path.substr(0,file_path.size()-4)+"_"+Tools::IntToString(Nvoidmax,0,false)+".txt").c_str());
+        rename(file_path.c_str(),(file_path.substr(0,file_path.size()-4)+"_"+Tools::IntToString(Nmax,0,false)+".txt").c_str());
         rename(new_name.c_str(),file_path.c_str());
     }
 }
 
-float Simu::getR1_delta(vector<float> & f, vector<float> & r,bool isHalo)
+float Simu::getR1DensityCoarseGrid(vector<float> & f, vector<float> & r,bool isOverDensity)
 {
     vector<float> delta(f.size());
     for(unsigned int i(0) ; i < f.size()-1 ; i++)
@@ -623,14 +566,14 @@ float Simu::getR1_delta(vector<float> & f, vector<float> & r,bool isHalo)
         delta[i] = (f[i+1]*pow(r[i+1],3.) - f[i]*pow(r[i],3.))/(3.*r[i]*r[i]*(r[i+1]-r[i]));
     }    
     delta[f.size() - 1] = delta[f.size() - 2];
-    return getR1_ramses(delta,r,_isOverDensity);
+    return getR1MassCoarseGrid(delta,r,isOverDensity);
 }
 
-float Simu::getR1_ramses(vector<float> & f_profile, vector<float> & r,bool isHalo)
+float Simu::getR1MassCoarseGrid(vector<float> & f_profile, vector<float> & r,bool isOverDensity)
 {
     if(f_profile[0] > 1.0)
     {
-        if(isHalo){
+        if(isOverDensity){
             for(unsigned int i(0) ; i < f_profile.size() ; i++)
             {
                 if(f_profile[i] <= 1.0 and i > 0)
@@ -644,7 +587,7 @@ float Simu::getR1_ramses(vector<float> & f_profile, vector<float> & r,bool isHal
     }
     else
     {
-        if(!isHalo){
+        if(!isOverDensity){
             for(unsigned int i(0) ; i < f_profile.size() ; i++)
             {
                 if(f_profile[i] >= 1.0 and i > 0)
