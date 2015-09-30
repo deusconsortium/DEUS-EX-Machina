@@ -1,0 +1,39 @@
+# PRECISION should be DOUB or SING
+PRECISION = SING
+
+# Add -DADD0US or -DADD2US to CFLAGS if fortran objects have 0 or 2 underscores added
+# Default is one underscore.
+CC = mpixlc_r
+CFLAGS =-DADD0US -D_LARGEFILE64_SOURCE
+
+FC = mpixlf90_r
+#FFLAGS = -cpp  -I/usr/local/include -D$(PRECISION) #-O3 -ipo  -axP #-static
+#FFLAGS =-Mpreprocess -I/usr/local/include -D$(PRECISION) #-O3 -ipo  -axP #-static 
+FFLAGS = -I/bglocal/pub/fftw/2.1.5/include  -WF,-D$(PRECISION) -qfree=f90 -qsuffix=f=f90 -qsuffix=cpp=f90 
+
+ifeq ($(PRECISION),DOUB)
+#        LIBS = -L/usr/local/lib/mpich-pgi -ldrfftw_mpi -ldfftw_mpi -ldrfftw -ldfftw
+	 LIBS = 	-L/bglocal/pub/fftw/2.1.5/lib -ldrfftw_mpi -ldfftw_mpi -ldrfftw -ldfftw -ldrfftw_threads -ldfftw_threads -lm
+else
+#        LIBS = -L/usr/local/lib/mpich-pgi -lsrfftw_mpi -lsfftw_mpi -lsrfftw -lsfftw
+	 LIBS = -L/bglocal/pub/fftw/2.1.5/lib -lsrfftw -lsfftw -lsrfftw_mpi -lsfftw_mpi -lsrfftw_threads -lsfftw_threads -lm	
+endif
+
+OBJS = grafic_types.o parallel_io.o common_var_ramses.o grafic_io.o transform.o \
+     cosmology.o compute_power.o
+MODS = grafic_types.mod grafic_io.mod common_var_ramses.mod transform.mod cosmology.mod \
+     compute_power.mod
+
+
+all:	powergrid
+
+powergrid:	$(OBJS) $(MODS) powergrid.o
+	$(FC) $(FFLAGS) -o $@ powergrid.o $(OBJS) $(LIBS)
+clean:
+	rm -rf $(OBJS) $(MODS) powergrid.o powergrid
+
+#.f90.o:
+#	$(FC) $(FFLAGS) -c $< -o $@
+%.o:	%.f90
+	$(FC) $(FFLAGS) -c $< -o $@
+

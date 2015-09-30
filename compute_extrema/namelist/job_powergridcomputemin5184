@@ -1,0 +1,18 @@
+
+cat > parameters.nml <<EOF
+&parameters
+nfact=1                                                     ! Use a grid nfact times thinner than coarse ramses grid (ignored for mpgrafic)
+rep='/data_bingo/Babel/boxlen5184_n2048_lcdmw5/cube_00014/'
+infofile='info_00014.txt'                                   ! Ramses info file
+inputfiles='fof_boxlen5184_n2048_lcdmw5_cube_'               ! Input file root    
+nchar='00014'                                               ! Output number
+nfiles=4096	                                            ! Number of files (ignored for ramses) 
+iogroupsize=0                                               ! Number of file per group (0 if no group are used)
+outputfile='P_5184_n2048_lcdmw5.txt'                         ! Output file
+filterScale=2.                                              ! Filter Scale such as filtering is on exp(-1/2*(x/FilterScale)^2) unit of coarse grid
+/
+EOF
+
+#RUN
+mpirun -np 16 ./compute_extrema parameters.nml
+
