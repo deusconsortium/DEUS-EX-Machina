@@ -7,7 +7,8 @@ This toolkit is aimed to explore/analyse extrema statistics ie minima/voids maxi
 More infos on http://www.deus-consortium.org/
 
 This toolkit uses GIT submodules. To be cloned using --recursive option: 
-`git clone --recursive https://github.com/deusconsortium/DEUS-EX-Machina.git
+    
+    git clone --recursive https://github.com/deusconsortium/DEUS-EX-Machina.git
 
 
 It is composed of the following softwares:
