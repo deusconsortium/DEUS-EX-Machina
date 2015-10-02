@@ -31,7 +31,7 @@ public:
    
     bool load(int const Boxlen, int const Npart,string const cosmo,int output = -1);
     string saveHalosPositions(const int min_particles = 0, const int max_particles = -1)  const;
-    void profileAnalysis(const string position_file,const string directory_name = "",int const NobjectsMax = -1);
+    void profileAnalysis(const string position_file_name,const string output_name = "",int const NobjectsMax = -1);
     
     float getR1MassCoarseGrid(vector<float> & f_profile, vector<float> & r_ramses,bool isOverDensity);
     float getR1DensityCoarseGrid(vector<float> & f_profile, vector<float> & r_ramses,bool isOverDensity);

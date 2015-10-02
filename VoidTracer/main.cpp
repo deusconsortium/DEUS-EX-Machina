@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
         cout << "Enter file name of the position File : ";
         cin >> path;
     }
-    cout << "Enter File end name (can be '') : ";
+    cout << "Enter output name (can be '') : ";
     cin >> name;
     cout << "Enter max objects : ";
     cin >> Max;

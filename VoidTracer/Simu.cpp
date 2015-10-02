@@ -7,10 +7,10 @@
 
 #include "Simu.h"
 
-Simu::Simu():_data_path("/data_bingo/Babel/")
+Simu::Simu()
 {
+    _data_path = "/data_bingo/Babel/";
     _simu_name = "";
-    _save_name = "";
     _cosmo = "";
     _Numpy_cores = 32;
     _boxlen = 0;
@@ -29,8 +29,8 @@ Simu::Simu():_data_path("/data_bingo/Babel/")
 
 Simu::Simu(int const Boxlen, int const Npart,string const cosmo,int const output)
 {
+    _data_path = "/data_bingo/Babel/";
     _simu_name = "";
-    _save_name = "";
     _cosmo = cosmo;
     _Numpy_cores = 32;
     _boxlen = Boxlen;
@@ -61,8 +61,7 @@ bool Simu::load(int const Boxlen, int const Npart,string cosmo,int output)
     _cosmo = cosmo;
     _output = output;    
     
-    _simu_name= _data_path + "boxlen"+Tools::IntToString(_boxlen)+"_n"+Tools::IntToString(_npart)+"_"+_cosmo;   
-    _save_name = "boxlen"+Tools::IntToString(_boxlen)+"_n"+Tools::IntToString(_npart)+"_"+_cosmo;
+    _simu_name= _data_path + "boxlen"+Tools::IntToString(_boxlen)+"_n"+Tools::IntToString(_npart)+"_"+_cosmo;
 
     //chargement du fichier info    
     string info_path = _simu_name + "/cube"+ Tools::IntToString(_output,true) + "/info"+Tools::IntToString(_output,true)+".txt";
@@ -240,10 +239,10 @@ string Simu::saveHalosPositions(const int min_particles, const int max_particles
     return "";
 }
 
-void Simu::profileAnalysis(const string position_file,const string directory_name,int const Nmax)
+void Simu::profileAnalysis(const string position_file,const string output_name,int const Nmax)
 {
     const unsigned int NumProc = _Numpy_cores;
-    _save_name = _save_name + directory_name;
+    string _save_name = "data/output/" + output_name;
     
     string file_path = "data/PositionFiles/" + position_file;
     string new_name = "data/PositionFiles/original.txt";
