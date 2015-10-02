@@ -14,7 +14,7 @@ import os
 
 
 class DEUSgraphics :
-	def __init__(self,boxlen,npart,isOverDensity):
+	def __init__(self,isOverDensity):
 		self._boxlen = boxlen
 		self._npart = npart
 		self._isOverDensity = isOverDensity
@@ -28,7 +28,7 @@ class DEUSgraphics :
 		self._f_tab = None
 		self._v_tab = None
 	
-	def __init__(self,boxlen,npart,isOverDensity,data_path):
+	def __init__(self,isOverDensity,data_path):
 		self._boxlen = boxlen
 		self._npart = npart
 		self._isOverDensity = isOverDensity
@@ -61,13 +61,13 @@ class DEUSgraphics :
 			print 'Error : no file ' + fileName
 		
 		else:
-			data = File.read()
+			data = File.read()			
 			
 			#file heading
-			(self._Nprofile,self._Nradius,R0,DR) = struct.unpack("iiff", data[:16])
+			(self._boxlen,self._npart,self._Nprofile,self._Nradius,R0,DR) = struct.unpack("iiiiff", data[:24])
 			
 			#radius reading
-			self._r = num.asarray(struct.unpack("f" * (self._Nradius), data[16:16 + 4*self._Nradius]))
+			self._r = num.asarray(struct.unpack("f" * (self._Nradius), data[24:24 + 4*self._Nradius]))
 			
 			#conversion in Mpc/h
 			self._r *= float(self._boxlen)
@@ -77,12 +77,16 @@ class DEUSgraphics :
 			self._v_tab = num.zeros((self._Nprofile,size(self._r)))
 			self._r1 = num.zeros(self._Nprofile)
 			
+			print 'extracting '+str(self._Nprofile)+' profiles ...'
+			
 			#reading
-			cursor = 16 + 4*self._Nradius
+			cursor0 = 24 + 4*self._Nradius
+			dc = 4*self._Nradius
 			for i in range(self._Nprofile):
-				self._f_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor:cursor + 4*self._Nradius]))
-				cursor += 4*self._Nradius
-				self._v_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor:cursor + 4*self._Nradius]))
+				#print str(cursor0 + 2*i*dc) + ' , ' + str(cursor0 + (2*i+1)*dc)
+				self._f_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + 2*i*dc : cursor0 + (2*i+1)*dc]))
+				#print str(cursor0 + (2*i+1)*dc) + ' , ' + str(cursor0 + (2*i+2)*dc)
+				self._v_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + (2*i+1)*dc : cursor0 + 2*(i+1)*dc]))
 				
 				#r1 mass
 				self._r1[i] = self._getR1(self._r,self._f_tab[i])

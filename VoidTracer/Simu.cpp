@@ -411,18 +411,23 @@ void Simu::profileAnalysis(const string position_file,const string output_name,i
     FILE* save_file = fopen((_save_name + ".DEUSprofile").c_str(),"wb");
     if(save_file != NULL)
     {
-        fwrite( &Nmax , sizeof(int) , 1 , save_file);
-        int N = r_ramses.size();
+        fwrite( &_boxlen , sizeof(int) , 1 , save_file);
+        fwrite( &_npart , sizeof(int) , 1 , save_file);
+        int N = void_position.size();
+        fwrite( &N , sizeof(int) , 1 , save_file);
+        N = r_ramses.size();
         fwrite( &N , sizeof(int) , 1 , save_file);
         fwrite( &_R0CoarseGrid , sizeof(int) , 1 , save_file);
         fwrite( &_DrCoarseGrid , sizeof(int) , 1 , save_file);
         fwrite( &r_ramses[0] , sizeof(float) , r_ramses.size() , save_file);
-        for(int i(0) ; i < Nmax ; i++){
+        for(int i(0) ; i < void_position.size() ; i++){
             fwrite( &_f[i][0] , sizeof(float) , _f[i].size() , save_file);
             fwrite( &_v[i][0] , sizeof(float) , _v[i].size() , save_file);
         }
         fclose(save_file);
     }
+    else
+        cout << "error : impossible to open/create file " << _save_name + ".DEUSprofile" << endl;
 }
 
 float Simu::getR1DensityCoarseGrid(vector<float> & f, vector<float> & r,bool isOverDensity)
