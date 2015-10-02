@@ -9,25 +9,20 @@ blabla
 Includes a python class DEUSgraphics that can be used to load and plot several quantitites from the .DEUSprofile files. The class can be used in the following way
 
 ```
-#define an object that wil study over-densities from the file 'my_data_file.DEUSprofile'
-
+#define an object that will study over-densities from the file 'my_data_file.DEUSprofile'
 plotter = DEUSgraphics(True)
 plotter.Load('my_data_file')
 
 #this last call be be also done in the constructor
-
 plotter = DEUSgraphics(True,'my_data_file')
 
 #plot a mean profile with a comoving r1 in [10.0,10.0 + 1.0] [Mpc/h]
-
 plotter.PlotMeanProfile(10.0,1.0)
 
 #plot the P(r1) histogram
-
 plotter.PlotStatistics()
 
 #plot an individual profile with index 'i' (must verify i >= 0 and i < plotter.getProfileNumber())
-
 plotter.PlotSingleProfile(i) 
 ```
 
