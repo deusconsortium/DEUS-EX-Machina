@@ -28,7 +28,7 @@ class DEUSgraphics :
 	
 	def Load(self,file_name = ''):
 		
-		fileName = self._dataPath + '/' + file_name + '.bin'
+		fileName = self._dataPath + '/' + file_name + '.DEUSprofile'
 		File = open(fileName, mode='rb')
 		if File is None:
 			print 'Error : no file ' + fileName

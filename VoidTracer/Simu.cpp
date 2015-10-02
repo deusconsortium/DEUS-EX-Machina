@@ -405,7 +405,7 @@ void Simu::profileAnalysis(const string position_file,const string directory_nam
 
     cout<<endl<<"------------------------------------"<<endl<<endl;
     
-    FILE* save_file = fopen((_save_name + ".bin").c_str(),"wb");
+    FILE* save_file = fopen((_save_name + ".DEUSprofile").c_str(),"wb");
     if(save_file != NULL)
     {
         fwrite( &Nmax , sizeof(int) , 1 , save_file);

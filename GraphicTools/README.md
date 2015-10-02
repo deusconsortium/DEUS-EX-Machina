@@ -4,6 +4,22 @@
 
 blabla
 
+## DEUSgraphics.py:
+
+Includes a python class DEUSgraphics that can be used to load and plot several quantitites from the .DEUSprofile files. The class can be used in the following way
+
+'''
+#define an objetc for the simultaiton boxlen = 5184, npart = 2048 and looking for over-densities (False if under-densities)
+plotter = new DEUSgraphics(5184,2048,True)
+plotter.Load('my_data_file')
+
+#plot a mean profile with a comoving r1 in [10.0,10.0 + 1.0] [Mpc/h]
+plotter.PlotMeanProfile(10.0,1.0)
+
+#plot the P(r1) profile
+plotter.PlotStatistics()
+'''
+
 ## File format
 
 header of file:
