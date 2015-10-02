@@ -347,6 +347,12 @@ void Simu::profileAnalysis(const string position_file,const string directory_nam
         return;
     }
     
+    if(Tools::fileExists(new_name))
+    {
+        rename(file_path.c_str(),(file_path.substr(0,file_path.size()-4)+"_"+Tools::IntToString(Nmax,0,false)+".txt").c_str());
+        rename(new_name.c_str(),file_path.c_str());
+    }
+    
     string ligne;
     unsigned int i=0;
     while(getline(part_file,ligne))
@@ -376,11 +382,6 @@ void Simu::profileAnalysis(const string position_file,const string directory_nam
         cout<< "\n\n!!! No Cube founded ... Leaving !!!\n"<<endl;
         cout<<"path : "<<path<<endl;
         
-        if(Tools::fileExists(new_name))
-        {
-            rename(file_path.c_str(),(file_path.substr(0,file_path.size()-4)+"_"+Tools::IntToString(Nmax,0,false)+".txt").c_str());
-            rename(new_name.c_str(),file_path.c_str());
-        }
         return;
     }
     
@@ -420,141 +421,21 @@ void Simu::profileAnalysis(const string position_file,const string directory_nam
     cout<<endl<<"------------------------------------"<<endl<<endl;
 
     cout<< endl << "Profile computation done ! Saving profiles ..." <<endl;
-
-    //organisation en terme de R1, ecriture du fichier d'abondance
-    vector<float> R1(void_position.size());
-    vector<int> void_per_r1[_Npoints];
-
-    cout << "computing the statistics of those objects ..." << endl;
-   
-    for(unsigned int i(0) ; i < void_position.size() ; i++)
-    {
-        R1[i] = getR1MassCoarseGrid(_f[i],r_ramses,_isOverDensity);
-        if(R1[i] > 0.0)
-        {
-            int index = -1;
-            for(unsigned int j(0) ; j < r_ramses.size() - 1 ; j++)
-            {
-                if(R1[i] >= r_ramses[j] and R1[i] < r_ramses[j+1])
-                {
-                    index = j;
-                    break;
-                }
-            }
-            if(index >= 0)
-                void_per_r1[index].push_back(i);
-        }
-    }
-
-    string n_voids_path;
-    Tools::createFolder("data/" + _save_name);
     
-    n_voids_path = "data/"+_save_name+ "/statistics.txt";
-
-    ofstream n_voids_file(n_voids_path.c_str(), ios::out);
-    if (!n_voids_file)
+    FILE* save_file = fopen((_save_name + ".bin").c_str(),"wb");
+    if(save_file != NULL)
     {
-        cout<<"ERROR : no file "<<n_voids_path<<" exists ! Leaving"<<endl;
-        return;
-    }
-
-    n_voids_file << "#r1 [Mpc/h]\tN1" << endl;  
-    n_voids_file << "#\t" << Tools::IntToString(void_position.size(),0,false) << endl;       
-
-    for(unsigned int i(0) ; i< r_ramses.size() ; i++)
-        n_voids_file << r_ramses[i]*_boxlen << "\t" << void_per_r1[i].size() <<endl;
-    
-    n_voids_file.close();
-    
-    //profils moyen
-    cout << "computing the mean profiles for each range of R1 ..." << endl;
-
-    int counter = 0;
-
-    for(unsigned int r1(0) ; r1 < r_ramses.size() ; r1 ++)
-    {
-        vector<float> f_mean(_Npoints,0.0);
-        vector<float> sigma(_Npoints,0.0); 
-        vector<float> v_mean(_Npoints,0.0);
-        vector<float> sigma_v(_Npoints,0.0);
-        
-
-        for(unsigned int i(0) ; i < _Npoints ; i++)
-        {  
-            vector<float> f_r1(void_per_r1[r1].size());
-            for(int j(0) ; j < void_per_r1[r1].size() ; j++)
-                f_r1[j] = _f[void_per_r1[r1][j]][i];
-
-            Tools::getMeanAndSigma(f_mean[i],sigma[i],f_r1);
-            
-            vector<float> v_r1(void_per_r1[r1].size());
-            for(int j(0) ; j < void_per_r1[r1].size() ; j++)
-                v_r1[j] = _v[void_per_r1[r1][j]][i];
-
-            Tools::getMeanAndSigma(v_mean[i],sigma_v[i],v_r1);
+        fwrite( &Nmax , sizeof(int) , 1 , save_file);
+        int N = r_ramses.size();
+        fwrite( &N , sizeof(int) , 1 , save_file);
+        fwrite( &_R0CoarseGrid , sizeof(int) , 1 , save_file);
+        fwrite( &_DrCoarseGrid , sizeof(int) , 1 , save_file);
+        fwrite( &r_ramses[0] , sizeof(float) , r_ramses.size() , save_file);
+        for(int i(0) ; i < Nmax ; i++){
+            fwrite( &_f[i][0] , sizeof(float) , _f[i].size() , save_file);
+            fwrite( &_v[i][0] , sizeof(float) , _v[i].size() , save_file);
         }
-
-        //saving those profiles
-
-        if(void_per_r1[r1].size() > 0)
-        {
-            string mean_path;
-            mean_path  = "data/"+_save_name+ "/profile_" + Tools::IntToString(counter,0,false) + ".txt";
-
-            ofstream mean_file(mean_path.c_str(), ios::out);
-            if (!mean_file)
-            {
-                cout<<"ERROR : no file "<<mean_path<<" exists ! Leaving"<<endl;
-                return;
-            }
-
-            mean_file << "#R [Mpc/h]\t f(r) \t sigma2 \t v(r) \t sigma2_v \t Nf" << endl;
-            for(unsigned int n(0) ; n < _Npoints ; n++)
-                mean_file << r_ramses[n]*_boxlen << "\t" << f_mean[n] << "\t" << sigma[n]<< "\t" << v_mean[n] << "\t" << sigma_v[n] << "\t" << void_per_r1[r1].size() << endl;
-
-            counter++;
-            mean_file.close();
-        }
-    }
-
-    cout << "Computing the mean profile ..." << endl;
-
-    string mean_path;
-    mean_path  = "data/"+_save_name+ "/mean_profile.txt";
-
-    ofstream mean_file(mean_path.c_str(), ios::out);
-    if (!mean_file)
-    {
-        cout<<"ERROR : no file "<<mean_path<<" exists ! Leaving"<<endl;
-        return;
-    }
-
-    mean_file << "#r_com [Mpc/h]\t f(r) \t sigma(r)\t Nf" << endl;
-
-    for(unsigned int r(0) ; r < _Npoints ; r ++)
-    {
-        float f_mean = 0.0;
-        float sigma = 0.0;
-
-        vector<float> f_tab(void_position.size());
-        for(unsigned int i(0) ; i < void_position.size() ; i++)
-        {
-            f_tab[i] = _f[i][r];            
-        }
-
-        Tools::getMeanAndSigma(f_mean,sigma,f_tab);
-
-        mean_file << r_ramses[r]*_boxlen << "\t" << f_mean << "\t" << sigma << "\t" << void_position.size() << endl;
-    }
-    cout << "Everything done ! Leaving " << endl;
-
-    mean_file.close();
-    
-    //si il existe un fichier appelé 'original.txt' alors il faut renommer
-    if(Tools::fileExists(new_name))
-    {
-        rename(file_path.c_str(),(file_path.substr(0,file_path.size()-4)+"_"+Tools::IntToString(Nmax,0,false)+".txt").c_str());
-        rename(new_name.c_str(),file_path.c_str());
+        fclose(save_file);
     }
 }
 
