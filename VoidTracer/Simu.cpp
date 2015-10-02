@@ -171,7 +171,6 @@ void Simu::ProfileAroundPosition(FVector Position ,vector<float> & f,vector<floa
                 {
                     float D = sqrt((xp-X)*(xp-X) + (yp-Y)*(yp-Y) + (zp-Z)*(zp-Z));
                     float Dr = radius_ramses[3] - radius_ramses[2];
-                    float Reff = 0.620350491/_npart;
                     
                     float vr = ((xp-X)*vx + (yp-Y)*vy + (zp-Z)*vz)/D;
                     //on cherche l'index correspondant
@@ -179,10 +178,10 @@ void Simu::ProfileAroundPosition(FVector Position ,vector<float> & f,vector<floa
                     for(unsigned int index(0) ; index < radius_ramses.size()  ;  index++)
                     {
                         unsigned int ri = radius_ramses.size()-1 - index;
-                        float a = (radius_ramses[ri] - D)/Reff;
                         float b = (D - radius_ramses[ri])/Dr;
                         if( b>=-1.0 and b<=1.0)
                         {
+                            //ne faut-il pas soustraire la vitese moyenne du centre ???
                             Speed[ri] += vr;
                             Nb_part[ri] += 1.0;
                         }
@@ -191,17 +190,6 @@ void Simu::ProfileAroundPosition(FVector Position ,vector<float> & f,vector<floa
                             Mass[ri] += 1.0;
                         else
                             break;
-                        /*
-                        if(a < -1)
-                            break;
-                        else if(a >= 1)
-                        {
-                            Mass[ri] += 1.0;
-                        }
-                        else if(a > -1.0 && a < 1.0)
-                        {
-                            Mass[ri] += (2.0 - a)*(1.0 + a)*(1.0 + a)/4.0;
-                        }*/
                     }
                 }
             }
@@ -327,12 +315,10 @@ void Simu::profileAnalysis(const string position_file,const string directory_nam
     else
         file.close();
     
-    int _Npoints = floor((_RmaxCoarseGrid - _R0CoarseGrid)/_DrCoarseGrid) + 1;
-    
+    int _Npoints = floor((_RmaxCoarseGrid - _R0CoarseGrid)/_DrCoarseGrid) + 1;   
     vector<float> r_ramses(_Npoints);
     float Rcell = 1.0/_npart;
     r_ramses[0] = _R0CoarseGrid*Rcell;    
-    
     for(unsigned int i(1) ; i < _Npoints ; i++)
         r_ramses[i] = r_ramses[i-1] + _DrCoarseGrid*Rcell;
     
@@ -368,13 +354,12 @@ void Simu::profileAnalysis(const string position_file,const string directory_nam
     }
 
     part_file.close();
-
-    cout << "Position file well readed, founded N = " << void_position.size() << " elements" << endl;
-    
-    
     string path = _simu_name + "/cube" + Tools::IntToString(_output,true) + "/";
+    
+    cout << "Position file well readed, founded N = " << void_position.size() << " elements" << endl;  
     cout<<"Looking in '"<< path <<"'"<< endl;
     cout<<"Loading all the simulation particles ..." <<endl;
+    
     FOFMultiCube multi(path,FOFParticles::DONT_READ_PARTICLES);
     
     if(multi.nCubes() == 0)
@@ -394,8 +379,8 @@ void Simu::profileAnalysis(const string position_file,const string directory_nam
     }
     
     cout<<endl<<"------------------------------------"<<endl<<endl;
-    cout << "Begining the profile tracer with : \n\t- Npoints = " << _Npoints << "\n\t- dr = " << _DrCoarseGrid <<"/npart\n\t- N = " << void_position.size() << endl;
-
+    cout << "Begining the profile tracer ..." <<endl;
+    
     vector<float> _f[void_position.size()];
     vector<float> _v[void_position.size()];
     for(unsigned int i(0) ; i < void_position.size() ; i++)
@@ -419,8 +404,6 @@ void Simu::profileAnalysis(const string position_file,const string directory_nam
         multi.cubes(i)->releaseParticles();
 
     cout<<endl<<"------------------------------------"<<endl<<endl;
-
-    cout<< endl << "Profile computation done ! Saving profiles ..." <<endl;
     
     FILE* save_file = fopen((_save_name + ".bin").c_str(),"wb");
     if(save_file != NULL)
