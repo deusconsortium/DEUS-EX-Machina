@@ -15,8 +15,8 @@ import os
 
 class DEUSgraphics :
 	def __init__(self,isOverDensity):
-		self._boxlen = boxlen
-		self._npart = npart
+		self._boxlen = 0
+		self._npart = 0
 		self._isOverDensity = isOverDensity
 		
 		self._dataPath = ''
@@ -29,8 +29,8 @@ class DEUSgraphics :
 		self._v_tab = None
 	
 	def __init__(self,isOverDensity,data_path):
-		self._boxlen = boxlen
-		self._npart = npart
+		self._boxlen = 0
+		self._npart = 0
 		self._isOverDensity = isOverDensity
 		
 		self._dataPath = data_path
@@ -187,10 +187,16 @@ class DEUSgraphics :
 		Nr1 /= dr*self._boxlen**3.
 		
 		figure(1)
+		subplot(121)
 		grid(True)
 		xlabel('$r_1$ in $[Mpc/h]$',fontsize = 20)
 		ylabel('$\partial n/\partial r_1$ in $[Mpc/h]^{-4}$',fontsize = 20)
 		bar(r1,Nr1,width=dr,color='b')
+		subplot(122)
+		grid(True)
+		xlabel('$r_1$ in $[Mpc/h]$',fontsize = 20)
+		ylabel('log scaled',fontsize = 20)
+		bar(r1,Nr1,width=dr,color='b',log = True)
 		show()		
 	
 	#private functions
