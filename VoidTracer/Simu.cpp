@@ -216,9 +216,11 @@ string Simu::saveHalosPositions(const int min_particles, const int max_particles
         cout <<"\n\nERROR !!  No halos founded !"<<endl;
     else{
         string file_name = "halo_boxlen"+Tools::IntToString(_boxlen)+"_npart"+Tools::IntToString(_npart)+"_"+_cosmo+"_output"+Tools::IntToString(_output)+".txt";
-        ofstream new_file(("data/PositionFiles/"+file_name).c_str(), ios::out | ios::trunc);
-        if(!new_file)
+        ofstream new_file(("data/positionFiles/"+file_name).c_str(), ios::out | ios::trunc);
+        if(!new_file){
             cout<<"\n\nERROR !!  Impossible to create file "<<file_name<<endl;
+            return "";
+        }
         else
         {
             int _nb_halos = Halos->nHalos();
@@ -231,8 +233,8 @@ string Simu::saveHalosPositions(const int min_particles, const int max_particles
                 
             }
             new_file.close();
-        }
-        cout<<"Halo position well registered !" << endl;
+            cout<<"Halo position well registered !" << endl;
+        }        
         delete Halos;
         return file_name;
     }
@@ -244,8 +246,8 @@ void Simu::profileAnalysis(const string position_file,const string output_name,i
     const unsigned int NumProc = _Numpy_cores;
     string _save_name = "data/output/" + output_name;
     
-    string file_path = "data/PositionFiles/" + position_file;
-    string new_name = "data/PositionFiles/original.txt";
+    string file_path = "data/positionFiles/" + position_file;
+    string new_name = "data/positionFiles/original.txt";
     
     int Nobjects = Tools::getNbLines(file_path);
     ifstream file(file_path.c_str());
@@ -403,6 +405,8 @@ void Simu::profileAnalysis(const string position_file,const string output_name,i
         multi.cubes(i)->releaseParticles();
 
     cout<<endl<<"------------------------------------"<<endl<<endl;
+    
+    cout<<"saving result in " << _save_name + ".DEUSprofile" <<endl;
     
     FILE* save_file = fopen((_save_name + ".DEUSprofile").c_str(),"wb");
     if(save_file != NULL)

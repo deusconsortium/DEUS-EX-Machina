@@ -34,16 +34,8 @@ int main(int argc, char** argv) {
     cin >> npart;
     cout<<"Enter cosmo : ";
     cin >> cosmo;
-    cout<<"Last output ? (0/1) ";
-    cin >> bo;
-    if(!bo)
-    {
-        cout << "Enter Output : ";
-        cin >> output;
-        
-    }
-    else
-        output = -1;
+    cout << "Enter Output : ";
+    cin >> output;
     my_simu.load(boxlen,npart,cosmo,output);
     
     cout<<"Is it over-density ? (0/1) ";
