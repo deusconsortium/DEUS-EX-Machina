@@ -124,6 +124,43 @@ bool Simu::load(int const Boxlen, int const Npart,string cosmo,int output)
     return true;
 }
 
+void Simu::PeculiarSpeedAroundPosition(FVector Position, FVector & speed,FOFMultiCube & multi, float const radius_ramses)
+{
+    speed.x = 0.0;
+    speed.y = 0.0;
+    speed.z = 0.0;
+    int count = 0;
+    
+    DEUSArea Zone(Position.x,Position.y,Position.y,2.*radius_ramses);
+
+    for(int cube (0) ; cube < multi.nCubes() ; cube ++) 
+    {
+        if(Zone.cubeIntersect(multi.cubes(cube)->boundaries()))
+        {
+            for(int particle(0) ; particle < multi.cubes(cube)->npart(); particle ++)
+            {
+                float xp = multi.cubes(cube)->posX(particle);
+                float yp = multi.cubes(cube)->posY(particle);
+                float zp = multi.cubes(cube)->posZ(particle);
+                
+                if(Zone.particuleIsInside(xp,yp,zp))
+                {
+                    count++;
+                    speed.x += multi.cubes(cube)->velX(particle);
+                    speed.y += multi.cubes(cube)->velY(particle);
+                    speed.z += multi.cubes(cube)->velZ(particle);
+                }
+            }
+        }
+    }
+    
+    //normalisation :
+    
+    speed.x /= float(count);
+    speed.y /= float(count);
+    speed.z /= float(count);
+}
+
 void Simu::ProfileAroundPosition(FVector Position ,vector<float> & f,vector<float> & v,FOFMultiCube & multi,vector<float> const radius_ramses)
 {
     int taille = radius_ramses.size();
@@ -148,6 +185,11 @@ void Simu::ProfileAroundPosition(FVector Position ,vector<float> & f,vector<floa
         Nb_part[i] = 0.0;
     }
     
+    //on récupère la vitesse du centre de masse sur 3 cellules (vides ~ 27 particules)
+    FVector speed;
+    PeculiarSpeedAroundPosition(Position,speed,multi,3.0);
+
+    
     float Rmax = radius_ramses[radius_ramses.size() - 1];
     
     DEUSArea Zone(X,Y,Z,2.*Rmax);
@@ -162,9 +204,9 @@ void Simu::ProfileAroundPosition(FVector Position ,vector<float> & f,vector<floa
                 float yp = multi.cubes(cube)->posY(particle);
                 float zp = multi.cubes(cube)->posZ(particle);
                 
-                float vx = multi.cubes(cube)->velX(particle);
-                float vy = multi.cubes(cube)->velY(particle);
-                float vz = multi.cubes(cube)->velZ(particle);
+                float vx = multi.cubes(cube)->velX(particle) - speed.x;
+                float vy = multi.cubes(cube)->velY(particle) - speed.y;
+                float vz = multi.cubes(cube)->velZ(particle) - speed.z;
                 
                 if(Zone.particuleIsInside(xp,yp,zp))
                 {
@@ -180,7 +222,6 @@ void Simu::ProfileAroundPosition(FVector Position ,vector<float> & f,vector<floa
                         float b = (D - radius_ramses[ri])/Dr;
                         if( b>=-1.0 and b<=1.0)
                         {
-                            //ne faut-il pas soustraire la vitese moyenne du centre ???
                             Speed[ri] += vr;
                             Nb_part[ri] += 1.0;
                         }

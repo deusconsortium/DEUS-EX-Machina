@@ -58,7 +58,9 @@ public:
     
 private:    
     void ProfileAroundPosition(FVector Position ,vector<float> & f,vector<float> & v,FOFMultiCube & multi,vector<float> const radius_ramses);
+    void PeculiarSpeedAroundPosition(FVector Position, FVector & speed,FOFMultiCube & multi, float const radius_ramses);
 
+    
     //les propriétés de la simu
     string _data_path,_save_name,_cosmo;
     string _simu_name;

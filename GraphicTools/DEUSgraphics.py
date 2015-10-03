@@ -154,6 +154,8 @@ class DEUSgraphics :
 		mf,sf,N = self._getMeanAndSigma(self._f_tab,mask)
 		mv,sv,N = self._getMeanAndSigma(self._v_tab,mask)
 		
+		print str(N) + ' profiles have been selected'
+		
 		figure(1)
 		subplot(121)
 		grid(True)
@@ -184,7 +186,7 @@ class DEUSgraphics :
 			r1[i] = self._r[0] + i*dr
 			Nr1[i] = num.count_nonzero(self._mask(self._r1,[r1[i],r1[i] + dr]))
 		
-		Nr1 /= dr*self._boxlen**3.
+		Nr1 /= dr*(self._boxlen**3.)
 		
 		figure(1)
 		subplot(121)
@@ -230,7 +232,7 @@ class DEUSgraphics :
 			
 			for j in range(size(index)):
 				sigma2 =  num.add(sigma2,(full_tab[index[j]] - mean)*(full_tab[index[j]] - mean))
-			return mean,sqrt(sigma2),size(index)
+			return mean,sqrt(sigma2/size(index)),size(index)
 		else:
 			print 'input arrays have not the same lenght : ' + shape(full) + ' vs ' + shape(mask)
 			return 0.0,0.0,0.0
