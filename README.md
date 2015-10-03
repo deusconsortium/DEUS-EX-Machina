@@ -15,7 +15,7 @@ It is composed of the following softwares:
 
 - compute_extrema: MPI Fortran code to detect extrema from particle positions. Calculate density on a grid using CIC, smooth result, then find minima or maxima and write in a FOFextrema file.
 
-- VoidTracer: C++ OpenMP code to trace void/halo from FOFextrema file, and get values: R, delta, avg_delta.
+- ProfileTracer: C++ OpenMP code to trace void/halo from FOFextrema file, and get values: R, delta, avg_delta.
 
 - GraphicTools: Python code to display density/mass/velocity profiles
 

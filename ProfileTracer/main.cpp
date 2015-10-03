@@ -55,6 +55,22 @@ int main(int argc, char** argv) {
             path = my_simu.saveHalosPositions(min,max);
         }
     }
+    else
+    {
+        cout << "Do you want to compute voids position ? (0/1) ";
+        cin >> bo;
+        if(bo)
+        {
+            float seuil_min,seuil_mean,density_max;
+            cout << "Enter seuil min : ";
+            cin >> seuil_min;
+            cout << "Enter seuil mean : ";
+            cin >> seuil_mean;
+            cout << "Enter max density : ";
+            cin >> density_max;
+            path = my_simu.saveVoidPositions(seuil_min,seuil_mean,density_max);
+        }
+    }
     if(path == "none")
     {
         cout << "Enter file name of the position File : ";

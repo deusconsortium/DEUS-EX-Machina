@@ -30,7 +30,9 @@ public:
     virtual ~Simu();
    
     bool load(int const Boxlen, int const Npart,string const cosmo,int output = -1);
-    string saveHalosPositions(const int min_particles = 0, const int max_particles = -1)  const;
+    string saveHalosPositions(const int min_particles = 0, const int max_particles = -1) const;
+    string saveVoidPositions(const float min_seuil = 0.0, const float mean_seuil = 0.0, const float max_density = 0.0)    const;
+
     void profileAnalysis(const string position_file_name,const string output_name = "",int const NobjectsMax = -1);
     
     float getR1MassCoarseGrid(vector<float> & f_profile, vector<float> & r_ramses,bool isOverDensity);
@@ -41,6 +43,10 @@ public:
         _data_path = data;
     }
     string getDataDirectory()   const{return _data_path;}
+    void setMinimumFilesDirectory(const string path){
+        _minimum_file_path = path;
+    }
+    string getMinimumFilesDirectory()   const{ return _minimum_file_path;}
     void setIsOverDensity(bool isOverDensity){ _isOverDensity = isOverDensity;}
     bool isOverDensity(){return _isOverDensity;}
     int getBoxlen() const{return _boxlen;}
@@ -62,7 +68,7 @@ private:
 
     
     //les propriétés de la simu
-    string _data_path,_save_name,_cosmo;
+    string _data_path,_minimum_file_path,_save_name,_cosmo;
     string _simu_name;
     int _boxlen,_npart,_output,_Numpy_cores;
     bool _isOverDensity;

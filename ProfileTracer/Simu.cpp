@@ -10,6 +10,7 @@
 Simu::Simu()
 {
     _data_path = "/data_bingo/Babel/";
+    _minimum_file_path = "/data/home/jpasdeloup/data/Voids/";
     _simu_name = "";
     _cosmo = "";
     _Numpy_cores = 32;
@@ -30,6 +31,7 @@ Simu::Simu()
 Simu::Simu(int const Boxlen, int const Npart,string const cosmo,int const output)
 {
     _data_path = "/data_bingo/Babel/";
+    _minimum_file_path = "/data/home/jpasdeloup/data/Voids/";
     _simu_name = "";
     _cosmo = cosmo;
     _Numpy_cores = 32;
@@ -248,6 +250,41 @@ void Simu::ProfileAroundPosition(FVector Position ,vector<float> & f,vector<floa
     }
 }
 
+
+string Simu::saveVoidPositions(const float min_seuil, const float mean_seuil, const float max_density)   const
+{
+    string file_name = "boxlen"+Tools::IntToString(_boxlen)+"_n"+Tools::IntToString(_npart)+"_"+_cosmo+Tools::IntToString(_output,true);
+    FOFExtrema extrema((_minimum_file_path + file_name).c_str()); 
+    
+    if(extrema.nExtrema() > 0.0)
+    {
+        string file_name = "void_boxlen"+Tools::IntToString(_boxlen)+"_npart"+Tools::IntToString(_npart)+"_"+_cosmo+"_output"+Tools::IntToString(_output)+".txt";
+        ofstream new_file(("data/positionFiles/"+file_name).c_str(), ios::out | ios::trunc);
+        if(!new_file){
+            cout<<"\n\nERROR !!  Impossible to create file "<<file_name<<endl;
+            return "";
+        }
+        else
+        {
+            for(int v(0) ; v < extrema.nExtrema() ; v++)
+            {
+                if(extrema.extremum(v)->avgSeuil() >= mean_seuil && extrema.extremum(v)->minSeuil() >= min_seuil && extrema.extremum(v)->density() <= max_density)
+                    new_file << extrema.extremum(v)->x() << "\t" << extrema.extremum(v)->y() << "\t" << extrema.extremum(v)->z()  << endl;  
+
+            }
+            new_file.close();
+            cout<<"Void position well registered !" << endl;
+        }
+        return file_name;
+    }
+    else
+    {
+        cout<< "no extremums founded in file " << _minimum_file_path + file_name << endl;
+        return "";
+    }
+        
+}
+
 string Simu::saveHalosPositions(const int min_particles, const int max_particles)   const
 {
     string directory_path = _simu_name + "/post/fof/output" + Tools::IntToString(_output,true) + "/";
@@ -281,6 +318,7 @@ string Simu::saveHalosPositions(const int min_particles, const int max_particles
     }
     return "";
 }
+
 
 void Simu::profileAnalysis(const string position_file,const string output_name,int const Nmax)
 {

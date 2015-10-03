@@ -27,20 +27,12 @@ class DEUSgraphics :
 		self._r1 = []
 		self._f_tab = None
 		self._v_tab = None
+		
+		self._profile = 0
 	
 	def __init__(self,isOverDensity,data_path):
-		self._boxlen = 0
-		self._npart = 0
-		self._isOverDensity = isOverDensity
-		
+		self.__init__(isOverDensity)		
 		self._dataPath = data_path
-		
-		self._Nprofile = 0
-		self._Nradius = 0
-		self._r = []
-		self._r1 = []
-		self._f_tab = None
-		self._v_tab = None
 	
 	def ListOutput(self):
 		folder = os.listdir(self._dataPath)
@@ -125,12 +117,13 @@ class DEUSgraphics :
 	def PlotSingleProfile(self,index):
 		if index >= 0 and index < self._Nprofile:
 			figure(1)
+			
 			f = self._f_tab[index]
 			v = self._v_tab[index]
 			r = self._r
 			d = f - r*self._derivative(r,f)/3.
 			
-			subplot(121)
+			subplot(211)
 			grid(True)
 			xlabel('$r$ in $[Mpc/h]$')
 			if self._isOverDensity:
@@ -140,11 +133,12 @@ class DEUSgraphics :
 			plot(r,d,linestyle = '--', color = 'b',label = '$\\delta(r) + 1$')
 			legend()
 			
-			subplot(122)
+			subplot(212)
 			grid(True)
 			xlabel('$r$ in $[Mpc/h]$')
 			ylabel('$v_p(r)$ in ?')
 			plot(r,v,linestyle = '--', marker = 'o', color = 'b')
+			
 			show()
 	
 	def PlotMeanProfile(self,R1value,Dr1 = 'dr'):
@@ -156,25 +150,27 @@ class DEUSgraphics :
 		
 		print str(N) + ' profiles have been selected'
 		
-		figure(1)
-		subplot(121)
-		grid(True)
-		xlabel('$r$ in $[Mpc/h]$')
-		ylabel('$f(r)$')
-		if self._isOverDensity:
-			yscale('log')
-		
-		plot(self._r,mf,linestyle = '-', color = 'b')
-		fill_between(self._r,mf - 1.96*sf/sqrt(N), mf + 1.96*sf/sqrt(N),color = 'b', alpha=.3)
-		
-		subplot(122)
-		grid(True)
-		xlabel('$r$ in $[Mpc/h]$')
-		ylabel('$v_p(r)$ in ?')
-		plot(self._r,mv,linestyle = '-', color = 'b')
-		fill_between(self._r,mv - 1.96*sv/sqrt(N), mv + 1.96*sv/sqrt(N),color = 'b', alpha=.3)
-		
-		show()
+		if N > 0:
+			figure(1)
+			
+			subplot(211)
+			grid(True)
+			xlabel('$r$ in $[Mpc/h]$')
+			ylabel('$f(r)$')
+			if self._isOverDensity:
+				yscale('log')
+			
+			plot(self._r,mf,linestyle = '-', color = 'b')
+			fill_between(self._r,mf - 1.96*sf/sqrt(N), mf + 1.96*sf/sqrt(N),color = 'b', alpha=.3)
+			
+			subplot(212)
+			grid(True)
+			xlabel('$r$ in $[Mpc/h]$')
+			ylabel('$v_p(r)$ in ?')
+			plot(self._r,mv,linestyle = '-', color = 'b')
+			fill_between(self._r,mv - 1.96*sv/sqrt(N), mv + 1.96*sv/sqrt(N),color = 'b', alpha=.3)
+			
+			show()
 	
 	def PlotStatistics(self,Npoints = 0):
 		if Npoints is 0:
@@ -189,17 +185,19 @@ class DEUSgraphics :
 		Nr1 /= dr*(self._boxlen**3.)
 		
 		figure(1)
-		subplot(121)
+		
+		subplot(211)
 		grid(True)
 		xlabel('$r_1$ in $[Mpc/h]$',fontsize = 20)
 		ylabel('$\partial n/\partial r_1$ in $[Mpc/h]^{-4}$',fontsize = 20)
 		bar(r1,Nr1,width=dr,color='b')
-		subplot(122)
+		subplot(212)
 		grid(True)
 		xlabel('$r_1$ in $[Mpc/h]$',fontsize = 20)
 		ylabel('log scaled',fontsize = 20)
 		bar(r1,Nr1,width=dr,color='b',log = True)
-		show()		
+		
+		show()
 	
 	#private functions
 	
