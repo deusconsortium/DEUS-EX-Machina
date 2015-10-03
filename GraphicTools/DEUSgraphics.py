@@ -1,7 +1,5 @@
-from pylab import *
-import numpy as num
+from DEUStools import*
 import struct
-import os
 
 #~ 
 #~ 
@@ -12,6 +10,7 @@ import os
 #~ 
 #~ 
 
+#DEUSgraphics class
 
 class DEUSgraphics :
 	def __init__(self,isOverDensity):
@@ -28,7 +27,7 @@ class DEUSgraphics :
 		self._f_tab = None
 		self._v_tab = None
 		
-		self._profile = 0
+		self.do_plot = True
 	
 	def __init__(self,isOverDensity,data_path):
 		self.__init__(isOverDensity)		
@@ -116,7 +115,7 @@ class DEUSgraphics :
 	
 	def PlotSingleProfile(self,index):
 		if index >= 0 and index < self._Nprofile:
-			figure(1)
+			fig = figure(1)
 			
 			f = self._f_tab[index]
 			v = self._v_tab[index]
@@ -139,7 +138,10 @@ class DEUSgraphics :
 			ylabel('$v_p(r)$ in ?')
 			plot(r,v,linestyle = '--', marker = 'o', color = 'b')
 			
-			show()
+			if self._do_plot:
+				show()
+			
+			return fig
 	
 	def PlotMeanProfile(self,R1value,Dr1 = 'dr'):
 		if Dr1 == 'dr':
@@ -151,7 +153,7 @@ class DEUSgraphics :
 		print str(N) + ' profiles have been selected'
 		
 		if N > 0:
-			figure(1)
+			fig = figure(1)
 			
 			subplot(211)
 			grid(True)
@@ -170,7 +172,10 @@ class DEUSgraphics :
 			plot(self._r,mv,linestyle = '-', color = 'b')
 			fill_between(self._r,mv - 1.96*sv/sqrt(N), mv + 1.96*sv/sqrt(N),color = 'b', alpha=.3)
 			
-			show()
+			if self._do_plot:
+				show()
+			
+			return fig
 	
 	def PlotStatistics(self,Npoints = 0):
 		if Npoints is 0:
@@ -184,7 +189,7 @@ class DEUSgraphics :
 		
 		Nr1 /= dr*(self._boxlen**3.)
 		
-		figure(1)
+		fig = figure(1)
 		
 		subplot(211)
 		grid(True)
@@ -197,9 +202,15 @@ class DEUSgraphics :
 		ylabel('log scaled',fontsize = 20)
 		bar(r1,Nr1,width=dr,color='b',log = True)
 		
-		show()
+		if self._do_plot:
+			show()
+		
+		return fig
 	
 	#private functions
+	
+	def _doPlot(self,doplot):
+		self._do_plot = doplot
 	
 	def _derivative(self,x,y):
 		dy = num.zeros(size(y))
@@ -234,6 +245,7 @@ class DEUSgraphics :
 		else:
 			print 'input arrays have not the same lenght : ' + shape(full) + ' vs ' + shape(mask)
 			return 0.0,0.0,0.0
+	
 	
 	def _getR1(self,r,f):
 		if self._isOverDensity and f[0] >= 1.0:
