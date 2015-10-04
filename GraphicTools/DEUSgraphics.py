@@ -13,12 +13,18 @@ import struct
 #DEUSgraphics class
 
 class DEUSgraphics :
-	def __init__(self,isOverDensity):
+	def __init__(self,data_path = None):
+		
+		self._H0 = 0.0
+		self._a = 0.0
+		self._Wm0 = 0.0
+		self._w = -1.0
 		self._boxlen = 0
 		self._npart = 0
-		self._isOverDensity = isOverDensity
+		self._cosmo = None
+		self._isOverDensity = None
 		
-		self._dataPath = ''
+		self._dataPath = data_path
 		
 		self._Nprofile = 0
 		self._Nradius = 0
@@ -27,11 +33,7 @@ class DEUSgraphics :
 		self._f_tab = None
 		self._v_tab = None
 		
-		self.do_plot = True
-	
-	def __init__(self,isOverDensity,data_path):
-		self.__init__(isOverDensity)		
-		self._dataPath = data_path
+		self._do_plot = True
 	
 	def ListOutput(self):
 		folder = os.listdir(self._dataPath)
@@ -55,10 +57,12 @@ class DEUSgraphics :
 			data = File.read()			
 			
 			#file heading
-			(self._boxlen,self._npart,self._Nprofile,self._Nradius,R0,DR) = struct.unpack("iiiiff", data[:24])
+			(self._H0,self._a,self._Wm0,Nc) = struct.unpack("fffi", data[:16])
+			self._cosmo = struct.unpack("c" * Nc, data[16:16 + Nc])
+			(self._boxlen,self._npart,self._isOverDensity,self._Nprofile,self._Nradius,R0,DR) = struct.unpack("ii?iiff", data[16 + Nc:41 + Nc])
 			
 			#radius reading
-			self._r = num.asarray(struct.unpack("f" * (self._Nradius), data[24:24 + 4*self._Nradius]))
+			self._r = num.asarray(struct.unpack("f" * (self._Nradius), data[41 + Nc:41 + Nc + 4*self._Nradius]))
 			
 			#conversion in Mpc/h
 			self._r *= float(self._boxlen)
@@ -71,12 +75,10 @@ class DEUSgraphics :
 			print 'extracting '+str(self._Nprofile)+' profiles ...'
 			
 			#reading
-			cursor0 = 24 + 4*self._Nradius
+			cursor0 = 41 + Nc + 4*self._Nradius
 			dc = 4*self._Nradius
 			for i in range(self._Nprofile):
-				#print str(cursor0 + 2*i*dc) + ' , ' + str(cursor0 + (2*i+1)*dc)
 				self._f_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + 2*i*dc : cursor0 + (2*i+1)*dc]))
-				#print str(cursor0 + (2*i+1)*dc) + ' , ' + str(cursor0 + (2*i+2)*dc)
 				self._v_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + (2*i+1)*dc : cursor0 + 2*(i+1)*dc]))
 				
 				#r1 mass
@@ -120,7 +122,7 @@ class DEUSgraphics :
 			f = self._f_tab[index]
 			v = self._v_tab[index]
 			r = self._r
-			d = f - r*self._derivative(r,f)/3.
+			d = f - r*derivative(r,f)/3.
 			
 			subplot(211)
 			grid(True)
@@ -155,7 +157,7 @@ class DEUSgraphics :
 		if N > 0:
 			fig = figure(1)
 			
-			subplot(211)
+			fig.subplot(211)
 			grid(True)
 			xlabel('$r$ in $[Mpc/h]$')
 			ylabel('$f(r)$')
@@ -165,7 +167,7 @@ class DEUSgraphics :
 			plot(self._r,mf,linestyle = '-', color = 'b')
 			fill_between(self._r,mf - 1.96*sf/sqrt(N), mf + 1.96*sf/sqrt(N),color = 'b', alpha=.3)
 			
-			subplot(212)
+			fig.subplot(212)
 			grid(True)
 			xlabel('$r$ in $[Mpc/h]$')
 			ylabel('$v_p(r)$ in ?')
@@ -175,7 +177,7 @@ class DEUSgraphics :
 			if self._do_plot:
 				show()
 			
-			return fig
+			return fig,mf,mv
 	
 	def PlotStatistics(self,Npoints = 0):
 		if Npoints is 0:
@@ -211,16 +213,6 @@ class DEUSgraphics :
 	
 	def _doPlot(self,doplot):
 		self._do_plot = doplot
-	
-	def _derivative(self,x,y):
-		dy = num.zeros(size(y))
-		
-		for i in range(size(x) - 2):
-			dy[i + 1] = (y[i + 2] - y[i])/(x[i + 2] - x[i])
-		
-		dy[0] = (y[1] - y[0])/(x[1]-x[0])
-		dy[size(dy)-1] = (y[size(y) - 1] -  y[size(y) - 2])/(x[size(y) - 1] - x[size(y) - 2])
-		return dy
  	
 	def _mask(self,masking_tab,limit_values):
 		mask_m = (masking_tab >= limit_values[0])

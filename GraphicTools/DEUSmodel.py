@@ -1,14 +1,11 @@
-from DEUSgraphics import DEUSgraphics
+from DEUSgraphics import*
 
 class DEUSmodel(DEUSgraphics):
 	
-	def __init__(self,isOverDensity,datapath = ''):
-		(DEUSgraphics.__init__(self,isOverDensity,datapath)
+	def __init__(self,datapath = '../ProfileTracer/data/output/'):
+		DEUSgraphics.__init__(self,datapath)
 		
 		self._power_spectrum_path = '/efiler2/bingo_save/Babel/data/'
-		
-		P_file = "/home/pdefromont/advil/pk_"+cosmo+'.dat'
-		D_a_file = "/home/pdefromont/advil/efiler2/bingo_save/Babel/data/mpgrafic_input_"+cosmo+".dat"
 		
 		self._zcmb = 1100.0
 		self._dlogD_dloga_cmb = 1.0
@@ -17,15 +14,17 @@ class DEUSmodel(DEUSgraphics):
 		self._k = num.empty([1])
 		
 		self._s2_0 = num.zeros(3)
-		self._s2_r = num.empty([1])
-		self._S2_r = num.empty([1])
+		self._s2_r = None
+		self._S2_r = None
+		
+		self._do_plot = False
 	
-	def Load(self,cosmo,file_name):
-		super.Load(file_name)
+	def Load(self,file_name):
+		DEUSgraphics.Load(self,file_name)
 		
-		self._s2_r = num.zeros(size(self._r))
+		self._s2_r = num.zeros((2,size(self._r)))
+		self._S2_r = num.zeros((2,size(self._r)))
 		
-		self._cosmo = cosmo
 		founded = True
 		
 		try:
@@ -61,11 +60,41 @@ class DEUSmodel(DEUSgraphics):
 			self._s2_0[i] = integrate(self._k,num.power(self._k,2 + 2*i)*self._P)
 		
 		# ! careful to the pi factor in numpy sinc(x) = sin(pi*x)/(pi*x) !
-		for r in range(size(self._r)):
-			self._s2_r[r] = integrate(self._k,num.power(self._k,2 + 2*i)*self._P*num.sinc(self._k*self._r[r]/num.pi))
-			self._S2_r[r] = integrate(self._k,num.power(self._k,2 + 2*i)*self._P*Wth(self._k*self._r[r]))
+		for i in range(2):
+			for r in range(size(self._r)):
+				self._s2_r[i][r] = integrate(self._k,num.power(self._k,2 + 2*i)*self._P*num.sinc(self._k*self._r[r]/num.pi))
+				self._S2_r[i][r] = integrate(self._k,num.power(self._k,2 + 2*i)*self._P*Wth(self._k*self._r[r]))
 		
 		
+	#overiding functions
+	def PlotMeanProfile(self,R1value,Dr1 = 'dr'):
+		r = self._r
+		fig,f,v = DEUSgraphics.PlotMeanProfile(R1value,Dr1)
+		r1 = solve(r,f,1.0)
+		S10 = solve(self._s2_r[0],self_r,r1)
+		S11 = solve(self._s2_r[1],self_r,r1)
 		
+		D_on_D0 = (self._S2_r[0]/self._s2_0[0] - self._S2_r[1]/self._s2_0[1]*S10/S11)
 		
+		#getting height of the peak from d1
+		d = f - 1.0 - r*derivative(r,f)/3.
+		
+		fit = SplineFit(r,d)
+		d1 = fit(r1)
+			
+		d10 = d1/(1. + 3.*Eta(a,self._w,self._Wm0,self._dlogD_dloga_cmb)*(1. + d1))
+		d0 = D_on_D0 - r*derivative(r,D_on_D0)/3.
+		
+		fit2 = SplineFit(r,d0)
+		d1cmb = fit2(r1)		
+		fcmb = 1.0 + d10/d1cmb*D_on_D0
+		
+		#evolving profile
+		r_t,f_t,v_t = evolveProfile(r,fcmb,af,self._w,self._Wm0,self._zcmb,self._dlogD_dloga_cmb)
+		
+		#plotting
+		fig.subplot(211)
+		plot(r_t,f_t,linestyle = '-',marker = '+', color = 'r',label = 'theory')
+		
+		show()
 		
