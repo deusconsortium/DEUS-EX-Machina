@@ -30,8 +30,19 @@ plotter.PlotSingleProfile(i)
 
 header of file:
 
+begining with the simulation parameters
+
+- H0: (float) value of the H0 in [kms/s/Mpc]
+- a: (float) experimental value of the scale factor (a = 1 today)
+- Wm: (float) value of Omega_matter at z = 0 (i.e. a = 1)
+- n: (int) size of the cosmo char[]
+- cosmo: (char[]) the cosmology used in the simulation (e.g. 'lcdmw5')
 - boxlen: (int) the size of the box of the simulation (e.g. 5184)
 - npart: (int) the number of particles in each direction (i.e. the total number of particles in the simulation is npart^3)
+
+properties of this run
+
+- isOverDensity: (bool) 1 if profiles are over-densities, 0 elsewhere
 - Nprofiles: (long int) total number of profiles
 - Nradius: (int) number of radius for each profile
 - R0: (float) value of the first schell radius in Ramses Unit

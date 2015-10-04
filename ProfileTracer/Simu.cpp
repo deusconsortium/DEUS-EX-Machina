@@ -490,9 +490,22 @@ void Simu::profileAnalysis(const string position_file,const string output_name,i
     FILE* save_file = fopen((_save_name + ".DEUSprofile").c_str(),"wb");
     if(save_file != NULL)
     {
+        int N = 0;
+        
+        //parametres de la simu
+        fwrite( &_data.H0, sizeof(float) , 1 , save_file);
+        fwrite( &_data.a_exp, sizeof(float) , 1 , save_file);
+        fwrite( &_data.omega_m, sizeof(float) , 1 , save_file);
+        N = _cosmo.size();
+        fwrite( &N , sizeof(int), 1, save_file);
+        const char *tab = _cosmo.c_str();
+        fwrite( &tab[0], sizeof(char), N, save_file);
         fwrite( &_boxlen , sizeof(int) , 1 , save_file);
         fwrite( &_npart , sizeof(int) , 1 , save_file);
-        int N = void_position.size();
+        
+        //parametres du run
+        fwrite( &_isOverDensity, sizeof(bool), 1, save_file );
+        N = void_position.size();
         fwrite( &N , sizeof(int) , 1 , save_file);
         N = r_ramses.size();
         fwrite( &N , sizeof(int) , 1 , save_file);
