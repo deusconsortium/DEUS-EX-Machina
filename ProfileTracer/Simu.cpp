@@ -189,7 +189,10 @@ void Simu::ProfileAroundPosition(FVector Position ,vector<float> & f,vector<floa
     
     //on récupère la vitesse du centre de masse sur 3 cellules (vides ~ 27 particules)
     FVector speed;
-    PeculiarSpeedAroundPosition(Position,speed,multi,3.0);
+    if(_isOverDensity)
+        PeculiarSpeedAroundPosition(Position,speed,multi,0.125);
+    else
+        PeculiarSpeedAroundPosition(Position,speed,multi,3.0);
 
     
     float Rmax = radius_ramses[radius_ramses.size() - 1];
@@ -397,10 +400,9 @@ void Simu::profileAnalysis(const string position_file,const string output_name,i
     
     int _Npoints = floor((_RmaxCoarseGrid - _R0CoarseGrid)/_DrCoarseGrid) + 1;   
     vector<float> r_ramses(_Npoints);
-    float Rcell = 1.0/_npart;
-    r_ramses[0] = _R0CoarseGrid*Rcell;    
-    for(unsigned int i(1) ; i < _Npoints ; i++)
-        r_ramses[i] = r_ramses[i-1] + _DrCoarseGrid*Rcell;
+    float Rcell = 1.0/_npart;   
+    for(unsigned int i = 0 ; i < _Npoints ; i++)
+        r_ramses[i] = _R0CoarseGrid*Rcell + i*_DrCoarseGrid*Rcell;
     
     vector<FVector> void_position;
     
@@ -509,10 +511,11 @@ void Simu::profileAnalysis(const string position_file,const string output_name,i
         fwrite( &N , sizeof(int) , 1 , save_file);
         N = r_ramses.size();
         fwrite( &N , sizeof(int) , 1 , save_file);
-        fwrite( &_R0CoarseGrid , sizeof(int) , 1 , save_file);
-        fwrite( &_DrCoarseGrid , sizeof(int) , 1 , save_file);
         fwrite( &r_ramses[0] , sizeof(float) , r_ramses.size() , save_file);
         for(int i(0) ; i < void_position.size() ; i++){
+            fwrite( &void_position[i].x , sizeof(float) , 1 , save_file);
+            fwrite( &void_position[i].y , sizeof(float) , 1 , save_file);
+            fwrite( &void_position[i].z , sizeof(float) , 1 , save_file);
             fwrite( &_f[i][0] , sizeof(float) , _f[i].size() , save_file);
             fwrite( &_v[i][0] , sizeof(float) , _v[i].size() , save_file);
         }
