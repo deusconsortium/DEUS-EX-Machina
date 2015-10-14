@@ -207,17 +207,21 @@ program compute_extrema
     tpart2cube1 = Mpi_Wtime()
     !Compute density using CIC
     if (myid == 0)write(*, *) 'part2extrema: Read particles and compute density in slices using CIC'
-
+  
     call part2extrema(myid, xxmin, xxmax, yymin, yymax, zmincube, zmaxcube, zminwithdzcoarse, zmaxwithdzcoarse, nx, ny, nz, local_nz, nproc, filterScale)
-
+    call getmem(real_mem)
+    call MPI_ALLREDUCE(real_mem,mempart2cube2 ,1,MPI_REAL,MPI_MAX,MPI_COMM_WORLD,ierr)
+    
+    tpart2cube2 = Mpi_Wtime()        
     tfull2 = Mpi_Wtime()
+        
     if (myid == 0)then
         print*, ''
         print*, 'CPU TIME'
         print*, 'tfull(s)          =', tfull2 - tfull1
         print*, ''
         print*, 'tfileselec(s)     =', tfileselec2 - tfileselec1
-        print*, 'tpart2cube+read(s)=', tpart2cube2 - tpart2cube1
+        print*, 'tpart2extrema+read(s)=', tpart2cube2 - tpart2cube1
     endif
 
     if (myid == 0)then
@@ -225,7 +229,7 @@ program compute_extrema
         print*, 'MEMORY USAGE'
         print*, 'End of fileselec'
         call writemem(memfileselec2)
-        print*, 'End of part2cube+read'
+        print*, 'End of part2extrema+read'
         call writemem(mempart2cube2)        
         print*, 'to be compared to buffer size (MB)', membuffer
     endif
