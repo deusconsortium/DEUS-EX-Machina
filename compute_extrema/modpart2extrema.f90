@@ -20,6 +20,8 @@ contains
         Integer(kind = 4) :: mpierr
         integer :: myid, nproc
         integer :: ncpu, ndim, npart, ngrid, n, i, j, k, l, icpu, ipos, igroup
+        integer, allocatable :: all_minima(:), all_seuil0(:)
+        integer :: nb_minima, nb_seuil0
         integer :: ncpu2, npart2, ndim2, levelmin, levelmax, ilevel
         integer :: nbA, nbB
         integer :: nx, ny, nz, ix, iy, iz, ixp1, iyp1, izp1, ixm1, iym1, izm1, idim, jdim, kdim
@@ -79,6 +81,9 @@ contains
         
         type(extremaList), pointer :: list, curr
         real(sp), dimension(:,:), allocatable :: extremumToSave
+        
+        real, dimension(26):: neighbor_density
+        real local_seuil
         
 #ifdef DOUB    
       MPI_Type = MPI_Double
@@ -341,8 +346,6 @@ contains
             endif
         endif
       
-
-
         !-----------------------------------------------------
         ! Compute Minimums in the density field and save them
         !-----------------------------------------------------
@@ -389,19 +392,17 @@ contains
         !computing the minimums ...
         if (myid == 0)write(*, *) 'Computing minimums in the smoothed density field ...'
         call title(myid, ncharcpu)
-        nomfich = 'data/extrema_' // ncharcpu // '.dat'        
-        open(unit = 2, file = trim(nomfich), status = 'unknown', form = 'unformatted')
-
+        
         !k = number of miniums
         !i = number of miniums such as seuil = 0
-        k = 0
-        i = 0
+        nb_minima = 0
+        nb_seuil0 = 0
         
         allocate(list)
         list%next => list        
         curr => list
         
-        do iz = 1, usable_local_nz - 2
+        do iz = 1, usable_local_nz
             izm1 = iz - 1
             izp1 = iz + 1
             
@@ -411,36 +412,54 @@ contains
                 ixp1 = ix + 1
                 if (ix == 0) ixm1 = nx - 1
                 if (ix == nx - 1) ixp1 = 0
+                
                 do iy = 0, ny - 1
                     iym1 = iy - 1
                     iyp1 = iy + 1
                     if (iy == 0) iym1 = ny - 1
                     if (iy == ny - 1) iyp1 = 0
                     !using the +/- 1 buffer region for the local extremum computation
-
+                    
                     !computing the minimum of the neighbour treshold
                     seuil = 100.0/(real(nx)*real(ny)*real(nz)) - Smoothedcube(ix, iy, iz)
-                    seuil_moyen = 0.0
-                    if (Smoothedcube(ixp1, iy, iz) - Smoothedcube(ix, iy, iz) < seuil) seuil = Smoothedcube(ixp1, iy, iz) - Smoothedcube(ix, iy, iz)
-                    seuil_moyen = seuil_moyen + Smoothedcube(ixp1, iy, iz) - Smoothedcube(ix, iy, iz)
-                    if (Smoothedcube(ixm1, iy, iz) - Smoothedcube(ix, iy, iz) < seuil) seuil = Smoothedcube(ixm1, iy, iz) - Smoothedcube(ix, iy, iz)
-                    seuil_moyen = seuil_moyen + Smoothedcube(ixm1, iy, iz) - Smoothedcube(ix, iy, iz)
-                    if (Smoothedcube(ix, iyp1, iz) - Smoothedcube(ix, iy, iz) < seuil) seuil = Smoothedcube(ix, iyp1, iz) - Smoothedcube(ix, iy, iz)
-                    seuil_moyen = seuil_moyen + Smoothedcube(ix, iyp1, iz) - Smoothedcube(ix, iy, iz)
-                    if (Smoothedcube(ix, iym1, iz) - Smoothedcube(ix, iy, iz) < seuil) seuil = Smoothedcube(ix, iym1, iz) - Smoothedcube(ix, iy, iz)
-                    seuil_moyen = seuil_moyen + Smoothedcube(ix, iym1, iz) - Smoothedcube(ix, iy, iz)
-                    if (Smoothedcube(ix, iy, izp1) - Smoothedcube(ix, iy, iz) < seuil) seuil = Smoothedcube(ix, iy, izp1) - Smoothedcube(ix, iy, iz)
-                    seuil_moyen = seuil_moyen + Smoothedcube(ix, iy, izp1) - Smoothedcube(ix, iy, iz)
-                    if (Smoothedcube(ix, iy, izm1) - Smoothedcube(ix, iy, iz) < seuil) seuil = Smoothedcube(ix, iy, izm1) - Smoothedcube(ix, iy, iz)
-                    seuil_moyen = seuil_moyen + Smoothedcube(ix, iy, izm1) - Smoothedcube(ix, iy, iz)
-
-                    seuil_moyen = seuil_moyen/6.0
-                    !we need the treshold to be positive
-
-                    !				write(2) (real(ix)+0.5)/real(nx),(real(iy)+0.5)/real(ny),(real(iz + local_nz*myid) + 0.5)/real(nz)&
-                    !					        &,Smoothedcube(ix,iy,iz)*real(nx)*real(ny)*real(nz),seuil*real(nx)*real(ny)*real(nz)&
-                    !					        &,seuil_moyen*real(nx)*real(ny)*real(nz)
                     
+                    seuil_moyen = 0.0
+                    
+                    neighbor_density(1) = Smoothedcube(ixm1, iym1, izm1)
+                    neighbor_density(2) = Smoothedcube(ixm1, iym1, iz)
+                    neighbor_density(3) = Smoothedcube(ixm1, iym1, izp1)
+                    neighbor_density(4) = Smoothedcube(ixm1, iy, izm1)
+                    neighbor_density(5) = Smoothedcube(ixm1, iy, iz)
+                    neighbor_density(6) = Smoothedcube(ixm1, iy, izp1)
+                    neighbor_density(7) = Smoothedcube(ixm1, iyp1, izm1)
+                    neighbor_density(8) = Smoothedcube(ixm1, iyp1, iz)
+                    neighbor_density(9) = Smoothedcube(ixm1, iyp1, izp1)
+                    
+                    neighbor_density(10) = Smoothedcube(ix, iym1, izm1)
+                    neighbor_density(11) = Smoothedcube(ix, iym1, iz)
+                    neighbor_density(12) = Smoothedcube(ix, iym1, izp1)
+                    neighbor_density(13) = Smoothedcube(ix, iy, izm1)
+                    !neighbor_density(1) = Smoothedcube(ix, iy, iz)
+                    neighbor_density(14) = Smoothedcube(ix, iy, izp1)
+                    neighbor_density(15) = Smoothedcube(ix, iyp1, izm1)
+                    neighbor_density(16) = Smoothedcube(ix, iyp1, iz)
+                    neighbor_density(17) = Smoothedcube(ix, iyp1, izp1)
+                    
+                    neighbor_density(18) = Smoothedcube(ixp1, iym1, izm1)
+                    neighbor_density(19) = Smoothedcube(ixp1, iym1, iz)
+                    neighbor_density(20) = Smoothedcube(ixp1, iym1, izp1)
+                    neighbor_density(21) = Smoothedcube(ixp1, iy, izm1)
+                    neighbor_density(22) = Smoothedcube(ixp1, iy, iz)
+                    neighbor_density(23) = Smoothedcube(ixp1, iy, izp1)
+                    neighbor_density(24) = Smoothedcube(ixp1, iyp1, izm1)
+                    neighbor_density(25) = Smoothedcube(ixp1, iyp1, iz)
+                    neighbor_density(26) = Smoothedcube(ixp1, iyp1, izp1)
+                                    
+                    do i = 1, 26
+                        local_seuil = neighbor_density(i) - Smoothedcube(ix, iy, iz)
+                        if (local_seuil < seuil) seuil = local_seuil
+                        seuil_moyen = seuil_moyen + local_seuil
+                    enddo
                     
                     if (seuil >= 0.)then
                         
@@ -454,21 +473,9 @@ contains
                         curr%extremum(5) = seuil*real(nx)*real(ny)*real(nz)
                         curr%extremum(6) = seuil_moyen*real(nx)*real(ny)*real(nz)
                         
-!                        write(2) &
-!                            &(real(ix) + 0.5)/real(nx), &
-!                            &(real(iy) + 0.5)/real(ny), &
-!                            &(real(iz - totalBuffer + usable_local_nz * myid) + 0.5)/real(nz), &
-!                            &Smoothedcube(ix, iy, iz)*real(nx)*real(ny)*real(nz), &
-!                            &seuil*real(nx)*real(ny)*real(nz), &
-!                            &seuil_moyen*real(nx)*real(ny)*real(nz)
-                        
-                        k = k + 1
-                        
-                        if (k==53) then
-                            write (*,*) curr%extremum
-                        endif
-
-                        if (seuil == 0.) i = i + 1
+                        nb_minima = nb_minima + 1
+       
+                        if (seuil == 0.) nb_seuil0 = nb_seuil0 + 1
                     endif
                 enddo
             enddo
@@ -476,26 +483,37 @@ contains
         
         
         if (myid == 0)write(*, *) 'Saving files...'        
+        nomfich = 'data/' // trim(outputfile) // '_' // ncharcpu // '.deus_extrema'        
+        open(unit = 2, file = trim(nomfich), status = 'unknown', form = 'unformatted')
+        
         curr = list        
-        allocate(extremumToSave(k,6))
-        do ix = 1, k
+        allocate(extremumToSave(nb_minima,6))
+        do ix = 1, nb_minima
             curr => curr%next
-            extremumToSave(ix,:) = curr%extremum(:)
-            
-            if (ix==53) then
-                write (*,*) extremumToSave(ix,:)
-            endif
+            extremumToSave(ix,:) = curr%extremum(:)   
         enddo
         
-        write(2) k
+        write(2) nb_minima
         write(2) extremumToSave(:,:)
         
         close(2)
         
-        write(*, *) 'for proc', myid, 'total minimums', k, 'with seuil=0', i        
-        write(*, *) 'Real mass proc', myid, sum(Smoothedcube(0:nx - 1, 0:ny - 1, 1:usable_local_nz - 1))
-       
+        !write(*, *) 'for proc', myid, 'total minimums', nb_minima, 'with seuil=0', nb_seuil0        
+        !write(*, *) 'Real mass proc', myid, sum(Smoothedcube(0:nx - 1, 0:ny - 1, 1:usable_local_nz - 1))
+        
+        allocate(all_minima(0:nproc-1))
+        allocate(all_seuil0(0:nproc-1))
+        
+        call MPI_Gather(nb_minima, 1, MPI_INTEGER, all_minima, 1, MPI_INTEGER, 0, MPI_comm_world, mpierr)
+        call MPI_Gather(nb_seuil0, 1, MPI_INTEGER, all_seuil0, 1, MPI_INTEGER, 0, MPI_comm_world, mpierr)
+                
+        if (myid == 0) then            
+            write(*, *) 'TOTAL MINIMA', sum(all_minima), 'WITH SEUIL=0', sum(all_seuil0)
+        endif        
+                                
         !deallocate
+        deallocate(all_minima)
+        deallocate(all_seuil0)
         deallocate(Smoothedcube)
         deallocate(FilterMatrix)
         deallocate(shiftx)
