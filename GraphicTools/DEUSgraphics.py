@@ -19,7 +19,7 @@ class DEUSgraphics :
 		
 		self._H0 = 0.0
 		self._a = 0.0
-		self._Wm0 = 0.0
+		self._WmToday = 0.0
 		self._w = -1.0
 		self._boxlen = 0
 		self._npart = 0
@@ -34,8 +34,10 @@ class DEUSgraphics :
 		self._r1 = []
 		self._r1_d = []
 		self._r1_full = []
+		self._selected_profile = []
 		self._f_tab = None
 		self._v_tab = None
+		self._pos_tab = None
 		
 		self._do_plot = True
 	
@@ -64,12 +66,13 @@ class DEUSgraphics :
 				data = File.read()			
 				
 				#file heading
-				(self._H0,self._a,self._Wm0,Nc) = struct.unpack("fffi", data[:16])
+				(self._H0,self._a,self._WmToday,Nc) = struct.unpack("fffi", data[:16])
 				self._cosmo = ''.join(num.asarray(struct.unpack("c" * Nc, data[16:16+Nc])))
-				(self._boxlen,self._npart,self._isOverDensity,self._Nprofile,self._Nradius,R0,DR) = struct.unpack("<ii?iiff", data[16 + Nc:41 + Nc])
+				
+				(self._boxlen,self._npart,self._isOverDensity,self._Nprofile,self._Nradius) = struct.unpack("<ii?ii", data[16 + Nc:33 + Nc])
 				
 				#radius reading
-				self._r = num.asarray(struct.unpack("f" * (self._Nradius), data[41 + Nc:41 + Nc + 4*self._Nradius]))
+				self._r = num.asarray(struct.unpack("f" * (self._Nradius), data[33 + Nc:33 + Nc + 4*self._Nradius]))
 				
 				#conversion in Mpc/h
 				self._r *= float(self._boxlen)
@@ -77,18 +80,21 @@ class DEUSgraphics :
 				#initialisation
 				self._f_tab = num.zeros((self._Nprofile,size(self._r)))
 				self._v_tab = num.zeros((self._Nprofile,size(self._r)))
+				self._pos_tab = num.zeros((self._Nprofile,3))
 				self._r1_full = num.zeros(self._Nprofile)
-				self._r1 = num.empty([1])
-				self._r1_d = num.empty([1])
+				self._selected_profile = np.ones(self._Nprofile)
+				self._r1 = []
+				self._r1_d = []
 				
 				print 'extracting '+str(self._Nprofile)+' profiles ...'
 				
 				#reading
-				cursor0 = 41 + Nc + 4*self._Nradius
-				dc = 4*self._Nradius
+				cursor0 = 33 + Nc + 4*self._Nradius
+				dc = 12 + 8*self._Nradius
 				for i in range(self._Nprofile):
-					self._f_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + 2*i*dc : cursor0 + (2*i+1)*dc]))
-					self._v_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + (2*i+1)*dc : cursor0 + 2*(i+1)*dc]))
+					self._pos_tab[i] = num.asarray(struct.unpack("fff", data[cursor0 + i*dc : cursor0 + i*dc + 12]))
+					self._f_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + i*dc + 12 : cursor0 + i*dc + 12 + 4*self._Nradius]))
+					self._v_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + i*dc + 12 + 4*self._Nradius : cursor0 + i*dc + 12 + 8*self._Nradius]))
 					
 					#r1 mass
 					r1 = solve(self._r,self._f_tab[i],1.)
@@ -96,13 +102,48 @@ class DEUSgraphics :
 					r1_d = solve(self._r,d,1.0)
 					self._r1_full[i] = r1
 					
+					self._selected_profile[i] = False
+					
 					if (r1 is not None) and (r1_d is not None):
-						self._r1 = num.append(self._r1,r1)
-						self._r1_d = num.append(self._r1_d,r1_d)
+						self._r1.append(r1)
+						self._r1_d.append(r1_d)
+						self._selected_profile[i] = True
+				
+				self._r1 = num.asarray(self._r1)
+				self._r1_d = num.asarray(self._r1_d)
+				
+				print 'Warning : w = -1'
 	
-	def Save(self):
-		return True
-	
+	#save compact data
+	def Save(self,filename = ''):
+		if filename is not None:
+			name = filename
+		else:
+			name = 'box'+str(self._boxlen)+'_n'+str(self._npart)+self._cosmo
+		
+		print 'saving file '+name+'.txt ...'
+		sys.stdout.flush()
+		my_file = open(name+".txt", "w")
+		k = 0
+		for i in range(self._Nprofile):
+			if self._selected_profile[i]:
+				my_file.write(str(self._pos_tab[i][0])+"\t")
+				my_file.write(str(self._pos_tab[i][1])+"\t")
+				my_file.write(str(self._pos_tab[i][2])+"\t")
+				my_file.write(str(self._r1[k])+"\t")				
+				my_file.write(str(self._r1_d[k])+"\t")
+				
+				d = getDensity(self._r,self._f_tab[i])
+				dFit = SplineFit(self._r,d)
+				my_file.write(str(dFit(self._r1[k]))+"\t")
+				
+				fFit = SplineFit(self._r,self._f_tab[i])
+				my_file.write(str(fFit(self._r1_d[k]))+"\n")
+				k = k+1
+		
+		my_file.close()
+		print 'saving done'
+		
 	## setters and getters
 	
 	def setDataPath(self,datapath):
@@ -143,7 +184,7 @@ class DEUSgraphics :
 			f = self._f_tab[index]
 			v = self._v_tab[index]
 			r = self._r
-			d = f + r*derivative(r,f)/3.
+			d = getDensity(r,f)
 			
 			subplot(211)
 			grid(True)
@@ -165,10 +206,10 @@ class DEUSgraphics :
 			
 			return fig
 	
-	def PlotMeanProfile(self,R1value,Dr1 = 'dr',Rsmooth = 0.0):
+	def PlotMeanProfile(self,R1value,Dr1 = 'dr',Rsmooth = 0.0,Precision = 2):
 		if Dr1 == 'dr':
 			Dr1 = self._r[2] - self._r[1]
-		mask = ma.masked_outside(self._r1_full,R1value, R1value + Dr1).mask
+		mask = ma.masked_inside(self._r1_full,R1value, R1value + Dr1).mask
 		mf,sf,N = self._getMeanAndSigma(self._f_tab,mask)
 		mv,sv,N = self._getMeanAndSigma(self._v_tab,mask)
 		
@@ -184,6 +225,11 @@ class DEUSgraphics :
 		if N > 0:
 			fig = figure(1)
 			
+			r,f = IncreaseResolution(self._r,mf,Precision)
+			r,df = IncreaseResolution(self._r,sf,Precision)
+			r,v = IncreaseResolution(self._r,mv,Precision)
+			r,dv = IncreaseResolution(self._r,sv,Precision)
+			
 			subplot(211)
 			grid(True)
 			xlabel('$r$ in $[Mpc/h]$')
@@ -191,15 +237,16 @@ class DEUSgraphics :
 			if self._isOverDensity:
 				yscale('log')
 			
-			plot(self._r,mf,linestyle = '-', color = 'b',label = 'data')
-			fill_between(self._r,mf - 1.96*sf/sqrt(N), mf + 1.96*sf/sqrt(N),color = 'b', alpha=.3)
+			plot(r,f,linestyle = '-', color = 'b',label = 'data')
+			fill_between(r,f - 1.96*df/sqrt(N), f + 1.96*df/sqrt(N),color = 'b', alpha=.3)
+			plot(r,getDensity(r,f),linestyle = '--', color = 'b',label = 'density')
 			
 			subplot(212)
 			grid(True)
 			xlabel('$r$ in $[Mpc/h]$')
 			ylabel('$v_p(r)$ in ?')
-			plot(self._r,mv,linestyle = '-', color = 'b',label = 'data')
-			fill_between(self._r,mv - 1.96*sv/sqrt(N), mv + 1.96*sv/sqrt(N),color = 'b', alpha=.3)
+			plot(r,v,linestyle = '-', color = 'b',label = 'data')
+			fill_between(r,v - 1.96*dv/sqrt(N), v + 1.96*dv/sqrt(N),color = 'b', alpha=.3)
 			
 			if self._do_plot:
 				show()
@@ -261,19 +308,30 @@ class DEUSgraphics :
 		xlabel('$r_1$ in $[Mpc/h]$')
 		ylabel('$r_1^\\delta$ in $[Mpc/h]$')
 		
-		xerr = num.zeros(size(self._r)-1)
-		yerr = num.zeros(size(xerr))
-		r1m = num.zeros(size(xerr))
-		r1dm = num.zeros(size(xerr))
-		for i in range(size(xerr)):
+		N = size(self._r) - 1
+		xerr = num.zeros(N)
+		yerr = num.zeros(N)
+		r1m = num.zeros(N)
+		r1dm = num.zeros(N)
+		
+		for i in range(N):
 			rM = ma.masked_outside(self._r1,self._r[i], self._r[i+1])
 			r1m[i] = rM.mean()
-			xerr[i] = rM.std()
+			xerr[i] = 1.96*rM.std()/float(sqrt(rM.count()))
 			rD = ma.masked_array(self._r1_d, rM.mask)
 			r1dm[i] = rD.mean()
-			yerr[i] = rD.std()
+			yerr[i] = 1.96*rD.std()/float(sqrt(rM.count()))
 		
 		errorbar(r1m, r1dm, xerr = xerr,yerr=yerr, fmt='o', ecolor='g')
+		plot(r1m,2./3.*r1m,linestyle = '--', color = 'r',label = '$r_1^\\delta =2/3r_1$')
+		legend()
+		
+		figure(2)
+		grid(True)	
+		xlabel('$r_1$ in $[Mpc/h]$')
+		ylabel('$r_1^\\delta$ in $[Mpc/h]$')
+		hist2d(self._r1, self._r1_d, bins = size(self._r))
+		colorbar()
 		show()
 	
 	#private functions

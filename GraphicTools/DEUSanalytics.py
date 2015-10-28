@@ -8,6 +8,7 @@ class DEUSanalytics:
 		self._zinit = zinit
 		self._dlogD_dloga_cmb = 1.0
 		self._P = num.empty([1])
+		self._P0 = num.empty([1])
 		self._Psmooth = num.empty([1])
 		self._k = num.empty([1])
 		
@@ -39,6 +40,7 @@ class DEUSanalytics:
 			self._k = num.copy(k)
 			self._P = num.copy(P)
 			self._Psmooth = num.copy(self._P)
+			self._P0 = num.copy(P)
 
 		return founded
 		
@@ -47,6 +49,15 @@ class DEUSanalytics:
 	
 	def resetSmoothing(self):
 		self._Psmooth = num.copy(self._P)
+		
+	def numericalSmoothing(self,boxlen,npart):
+		print 'smoothing the Linear spectrum to obtain the effective spectrum'
+		
+		x = self._k*float(boxlen)/float(npart)
+		#self._P = self._P*exp(-7*x**2./72.)+1./float(npart)*(1.-2./3.*sin(x/2.)**2.)
+		self._P = self._P*exp(-7*x**2./72.)
+		self._Psmooth = num.copy(self._P)
+		self._computeSigmas()
 	
 	def globalSmoothSpectrum(self,smoothing_radius,function = 'th'):
 		R = smoothing_radius

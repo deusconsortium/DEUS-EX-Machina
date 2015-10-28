@@ -65,9 +65,7 @@ def integrate(x,y,imax = -1,from_zeros = True,method = 'quadric'):
 	else:
 		for i in range(imax - 1):
 			Int += 0.5*(y[i+1] + y[i])*(x[i+1] - x[i])
-	
 	return Int
-	
 	
 def getPowerLawFitCoefficients(x,y,order = 2):
 	S = num.empty([order + 1,order + 1])
@@ -136,20 +134,32 @@ def gaussianDensitySmoothing(r,f0,R,end_point_to_remove = 5,r1_factor = 2):
 
 #physical functions
 
-def getDensity(r,f):
-	d = num.zeros(size(r))
-	n = size(r)-1
-	d[n]=(f[n]*r[n]**3. - f[n-1]*r[n-1]**3)/(r[n]**3. - r[n-1]**3)
-	d[n-1]=d[n]
-	for i in range(n-1):
-		x = r[n-1-i]/r[n-2-i]
-		d[n-2-i] = -d[n-1-i]*(1.+x*(2.+3.*x))/(3.+x*(2.+x)) + 4.*(x**3.*f[n-1-i]-f[n-2-i])/(x-1.)
+def getDensity(r,f,method = 'defaut'):
+	d = num.ones(size(r))
+	
+	if method == 'defaut':
+		return f + r/3.*derivative(r,f)
+	elif method == 'simple':
+		for i in range(size(r)-1):
+			d[i] = 1./3.*(f[i+1]*r[i+1]**3. - f[i]*r[i]**3.)/(r[i]**2.*(r[i+1]-r[i]))
+	else:
+		for i in range(size(r)-1):
+			d[i] = 1./3.*(3.*r[i+1]*f[i]-4.*r[i]*f[i]+r[i]*f[i+1])/(r[i+1]-r[i])
+
+	d[size(r)-1]=d[size(r)-2]
 	return d
 
 def Epsilon0(w,Wm0,zcmb):
 	if Wm0 == 1.0:
 		return 0.0
 	return (1.-Wm0)/Wm0*(zcmb+1.)**(3.*w)
+
+def Omega_m_0(Wmtoday,w,zinit):
+	x = 1./(zinit+1.0)**(3.*w)
+	return Wmtoday*x/(1.-Wmtoday*(1.-x))
+
+def Omega_m(alpha,Wm0,w,zcmb):
+	return 1./(1.+Epsilon0(w,Wm0,zcmb)*alpha**(-3.*w))
 
 def Eta(a,w,Wm0,d_logD_d_loga,zcmb):
 	s0 = d_logD_d_loga
@@ -240,6 +250,12 @@ class SplineFit:
 					return I
 				else:
 					return self.Integrate(self)
+
+def IncreaseResolution(x,y,factor = 2):
+	X = num.linspace(x[0],x[size(x)-1],factor*size(x))
+	Sx = SplineFit(x,y)
+	return X,Sx(X)
+
 #plotting function
 
 def plotProfiles(x,various_y,labels):
@@ -291,7 +307,7 @@ def evolvePsi(r0,f0,a_tab,w,Wm0,zcmb,s0):
 			return 1.0
 	
 	e0 = Epsilon0(w,Wm0,zcmb)
-	y0 = [1.,s0*(1. - f0)/3.]
+	y0 = [1.,s0*(1. - f0)/3.*sqrt(2.*Wm0)]
 	alpha = a_tab*(zcmb + 1.)
 	alpha_tab = num.zeros(size(a_tab)+1)
 	alpha_tab[0] = 1.0
@@ -307,9 +323,9 @@ def evolvePsi(r0,f0,a_tab,w,Wm0,zcmb,s0):
 	retour,v = sol.T
 	retour = num.delete(retour,0)
 	v = num.delete(v,0)
-	
+
 	a = alpha_tab[size(alpha_tab)-1]
-	return retour,r0*num.sqrt(Wm0/2.)*(zcmb + 1.0)**(1./2.)/(299792458.0*20000.*num.power(a,3.*w/2.-1.))*v
+	return retour,v/sqrt(2.*Omega_m(a,Wm0,w,zcmb))
 
 def evolveProfile(r0,f0,af,w,Wm0,zcmb,dlogD_dloga_cmb):
 	print 'evolving parameters : \n\ta = '+str(af)+'\n\tw = '+str(w)+'\n\tWm0 = '+str(Wm0)+'\n\tzcmb = '+str(zcmb)+'\n\tdlogD_dloga_cmb = '+str(dlogD_dloga_cmb)
