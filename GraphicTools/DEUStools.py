@@ -7,6 +7,8 @@ from scipy import integrate as Nintegrate
 from scipy.special import erfc
 from scipy.special import erf
 from scipy.special import hyp2f1
+from scipy.special import gamma
+from scipy.misc import factorial
 
 
 #tedious functions
@@ -19,6 +21,23 @@ def I_dn_dr1(x):
 
 def Wg(a,b):
 	return exp(-(a+b)**2./2.)-exp(-(a-b)**2./2.) + b/2.*sqrt(2.*num.pi)*(erf((a-b)/sqrt(2.)) + erf((a+b)/sqrt(2.)))
+
+def In(x,n):
+	return   (-1.)**n*2.**(n/2.-2.)*gamma((1.+n)/2.)/(5.*sqrt(5.*num.pi))*( 
+			 10.*(n+1.)*(5.+x**2.)**(-(3.+n)/2.)
+			 - 32.*(5.+x**2.)**(-(1.+n)/2.)
+			 + 155.*2.**(3.+n)*(1.+n)*(5.+4.*x**2.)**(-(3.+n)/2.)
+			 + 2.**(6.+n)*(5.+4.*x**2.)**(-(1.+n)/2.)
+			 - 150.*(1.+n)*x**(-(n+3.))*hyp2f1(1./2.,(3.+n)/2.,3./2.,-5./x**2.)
+			 - 75.*(1.+n)*x**(-(n+3.))*hyp2f1(1./2.,(3.+n)/2.,3./2.,-5./(4.*x**2.))
+			 + 50.*(1.+n)*(3.+n)*x**(-(n+5.))*hyp2f1(1./2.,(5.+n)/2.,3./2.,-5./x**2.)
+			 + 25.*(1.+n)*(3.+n)*x**(-(n+5.))*hyp2f1(1./2.,(5.+n)/2.,3./2.,-5./(4.*x**2.)))
+
+def Cn(g,n):
+	if n is 0:
+		return In(1./sqrt(1.-g**2.),0)
+	else:
+		return g**n/(factorial(n)*(1.-g**2.)**n)*In(1./sqrt(1.-g**2.),n)
 
 #useful functions
 
@@ -50,22 +69,18 @@ def Wth(x):
 	nan_pos = num.isnan(W)
 	W[nan_pos] = 1.0 
 	return W
-
-def integrate(x,y,imax = -1,from_zeros = True,method = 'quadric'):
-	Int = 0.0
-	if imax == -1:
-		imax = size(x)
-
-	if from_zeros == True and x[0] > 0.0:
-		Int += 0.5*y[0]*x[0]
 	
-	if method == 'spline':
-		fit = SplineFit(x,y)
-		Int += fit.Integrate(x[imax - 1])
+def integrate(x,y,x0 = None,x1 = None):
+	#x0 = max(i for i in [x0,min(x)] if i is not None)
+	#x1 = min(i for i in [x1,max(x)] if i is not None)
+	fs = SplineFit(x,y)
+	return fs.Integrate(x0,x1)
+	"""
 	else:
-		for i in range(imax - 1):
-			Int += 0.5*(y[i+1] + y[i])*(x[i+1] - x[i])
-	return Int
+		I = 0.		
+		for i in range(size(x) - 1):
+			I += 0.5*(max(0.0,min(x[i+1],x1) - max(x[i],x0)))*(y[i] + (y[i+1]-y[i])*(max(x[i],x0)-x[i])/(x[i+1]-x[i]) + y[i] + (y[i+1]-y[i])*(min(x[i+1],x1)-x[i])/(x[i+1]-x[i]))
+		return I"""
 	
 def getPowerLawFitCoefficients(x,y,order = 2):
 	S = num.empty([order + 1,order + 1])
@@ -80,6 +95,93 @@ def getPowerLawFitCoefficients(x,y,order = 2):
 		P[i] = num.sum(y*(x**i))
 	A = dot(inv(S),P)
 	return A
+
+def getCICCentralDensity(r,f,R):
+	if r[0] > 0.0:
+		f3 = f[0:3]
+		r3 = r[0:3]
+		A = getPowerLawFitCoefficients(r3,f3,2)
+		
+		#adding 2 points
+		r = num.insert(r,0,r[0]/2.)
+		r = num.insert(r,0,0.0)
+		f = num.insert(f,0,A[0]+A[1]*r[1]+A[2]*r[1]**2.)
+		f = num.insert(f,0,A[0])
+	
+	#defining densities
+	d = getDensity(r,f)
+	d[0] = f[0]
+		
+	ds = SplineFit(r,d)
+	
+	X = num.linspace(0.0,R,20)	
+	Y = ds(X)*X*X
+	return 3./R**3.*integrate(X,Y)
+
+def CICDensitySmoothing(r,f,R,plotting = False):
+	if R == 0.0 :
+		return f0
+	
+	if plotting:
+		print 'spherical CIC smoothing on '+str(R)+' [Mpc/h]'	
+	
+	#getting the f0
+	f3 = f[0:3]
+	r3 = r[0:3]
+	A = getPowerLawFitCoefficients(r3,f3,2)
+	
+	#adding 2 points
+	r = num.insert(r,0,r[0]/2.)
+	r = num.insert(r,0,0.0)
+	f = num.insert(f,0,A[0]+A[1]*r[1]+A[2]*r[1]**2.)
+	f = num.insert(f,0,A[0])
+	
+	#defining densities
+	d = getDensity(r,f)
+	d[0] = f[0]
+	plot(r,d,'b--')
+	dcic = num.zeros(size(d))	
+	ds = SplineFit(r,d)
+	
+	x = num.copy(r)
+	for i in range(size(r)):
+		if r[i] <= R:
+			if r[i] == 0.0:
+				X = num.linspace(0.0,R,10)	
+				Y = ds(X)*X*X
+				dcic[i] = 3./R**3.*integrate(X,Y)
+			else:
+				X = num.linspace(0.0,R-r[i],10)
+				Y = ds(X)*X*X
+				dcic[i] = 3./R**3.*integrate(X,Y)
+				
+				X = num.linspace(R-r[i],R+r[i],10)
+				Y = ds(X)*X*(R**2 - (X-r[i])**2.)/(2.*r[i])
+				dcic[i] += integrate(X,Y)
+		else:
+			X = num.linspace(r[i]-R,r[i]+R,10)
+			Y = ds(X)*X*(R**2 - (X-r[i])**2.)/(2.*r[i])
+			dcic[i] = 3./(2.*R**3.)*integrate(X,Y)
+	
+	#correcting the last 2 points
+	dcic[size(dcic)-1] = d[size(d)-1]
+	dcic[size(dcic)-2] = d[size(d)-2]
+	
+	#computing fcic
+	fcic = getMassContrast(r,dcic)
+	
+	if plotting:
+		figure(1)
+		grid(True)
+		plot(r,f,'b-',label = 'f')
+		plot(r,d,'b--', label = 'd')
+		plot(r,fcic,linestyle = '-', marker = 'o',color = 'r',label = 'f cic')
+		plot(r,dcic,linestyle = '--', marker = '+',color = 'r',label = 'd cic')
+		show()
+	
+	return fcic[2:]
+	
+	
 
 def gaussianDensitySmoothing(r,f0,R,end_point_to_remove = 5,r1_factor = 2):
 	if R == 0.0 :
@@ -133,6 +235,33 @@ def gaussianDensitySmoothing(r,f0,R,end_point_to_remove = 5,r1_factor = 2):
 	return fr
 
 #physical functions
+
+def getMassContrast(r,d):
+	if r[0] > 0.:
+		#getting the f0
+		d3 = d[0:3]
+		r3 = r[0:3]
+		A = getPowerLawFitCoefficients(r3,d3,2)
+		
+		#adding 1 points
+		ru = num.insert(r,0,0.0)
+		du = num.insert(d,0,A[0])
+	else:
+		ru = r
+		du = d
+	
+	f = num.zeros(size(ru))
+	f[0] = du[0]
+	for i in range(size(d) - 1):
+		if i == 0:
+			f[1] = du[0]/4. + 3.*du[1]/4.
+		else:
+			x = ru[i]/ru[i+1]
+			f[i+1] = f[i] *x**3. + 1./4.*(1-x)*(x**2.*(d[i+1]+3.*d[i]) + 2.*x*(d[i+1]+d[i]) + d[i] + 3.*d[i+1])
+
+	if size(ru) > size(r):
+		return f[1:]
+	return f
 
 def getDensity(r,f,method = 'defaut'):
 	d = num.ones(size(r))
@@ -220,36 +349,21 @@ class SplineFit:
 			else:
 				return None
 			
-	def Integrate(self,x = None):
-		if x is None:
-			I = 0.0
-			for i in range(size(self._x)):
-				D = self._x[i+1] - self._x[i]
-				I += D*(self._c[i][0] + self._c[i][1]/2. + self._c[i][2]/3. + self._c[i][3]/4.)
-			return I
-		else:
-			if size(x) > 1:
-				I = num.zeros(size(x))
-				for i in range(size(x)):
-					I[i] = self.Integrate(x[i])
-				return I
-			else:
-				index = -1
-				for i in range(size(self._x) - 1):
-					if self._x[i] <= x and self._x[i+1] >= x:
-						index = i
-						break
-				if index >= 0:
-					I = 0.0
-					for i in range(index):
-						D = self._x[i+1]-self._x[i]
-						I += D*(self._c[i][0] + self._c[i][1]/2. + self._c[i][2]/3. + self._c[i][3]/4.)
-					X = (x - self._x[index])/(self._x[index+1]-self._x[index])
-					D = self._x[index+1]-self._x[index]
-					I += D*(self._c[index][0]*X + self._c[index][1]*X**2./2. + self._c[index][2]*X**3./3. + self._c[index][3]*X**4./4.)
-					return I
-				else:
-					return self.Integrate(self)
+	def Integrate(self,x0 = None,x1 = None):
+		x0 = max(i for i in [x0,min(self._x)] if i is not None)
+		x1 = min(i for i in [x1,max(self._x)] if i is not None)
+		
+		I = 0.0
+		for j in range(size(self._x) - 1):
+			X = max((min(x1,self._x[j+1]) - max(x0,self._x[j]))/(self._x[j+1]-self._x[j]),0.0)
+			I += (self._x[j+1]-self._x[j])*(self._c[j][0]*X + self._c[j][1]*X**2./2. + self._c[j][2]*X**3./3. + self._c[j][3]*X**4./4.)
+		return I
+		
+	def Primitive(self):
+		I = num.zeros(size(self._x))
+		for j in range(size(self._x) - 1):
+			I[j+1] = I[j] + (self._x[j+1]-self._x[j])*(self._c[j][0] + self._c[j][1]/2. + self._c[j][2]/3. + self._c[j][3]/4.)
+		return I
 
 def IncreaseResolution(x,y,factor = 2):
 	X = num.linspace(x[0],x[size(x)-1],factor*size(x))

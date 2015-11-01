@@ -56,7 +56,14 @@ class DEUSmodel(DEUSgraphics,DEUSanalytics):
 			self.localSmoothSpectrum(0.5*r1,'th')
 			
 			if Rsmooth > 0.0:
-				self.localSmoothSpectrum(Rsmooth,'exp')		
+				self.localSmoothSpectrum(Rsmooth,'exp')	
+				
+			#smoothing with CIC kernel
+			R0 = 0.62035*float(self._boxlen)/float(self._npart)
+			fcic = CICDensitySmoothing(self._r,f,R0)
+			subplot(211)
+			plot(self._r,fcic,linestyle = '--',marker = '', color = 'g',label = 'CIC')
+				
 			
 			#getting height of the peak from d1
 			d0 = self._getInitialHeight(self._r,f,r1)
@@ -76,8 +83,16 @@ class DEUSmodel(DEUSgraphics,DEUSanalytics):
 			self.resetSmoothing()
 		show()
 
-	def PlotStatistics(self,Npoints = 0,normalized = True):
-		R1,Nr1,Nr1d = DEUSgraphics.PlotStatistics(self,Npoints,normalized)
+	def PlotHeightStatistics(self,Npoints = 100,normalized = True):
+		d0_tab,Nd = DEUSgraphics.PlotHeightStatistics(self,Npoints,normalized)
+		
+		dtheo_tab, Ndtheo = DEUSanalytics.computeLinearExtremumDistributionFromHeigh(self,1./self._a -1.)
+		plot(dtheo_tab, Ndtheo,'r-')
+		
+		show()
+
+	def PlotRadiusStatistics(self,Npoints = 0,normalized = True):
+		R1,Nr1,Nr1d = DEUSgraphics.PlotRadiusStatistics(self,Npoints,normalized)
 		
 		#R1 = num.add(R1, 0.5*(R1[2]-R1[1]))
 		Nth,Nthd = self.computeR1Distribution(R1,normalized = normalized)
@@ -104,7 +119,6 @@ class DEUSmodel(DEUSgraphics,DEUSanalytics):
 		xlabel('$k$ in $h^{-1}.Mpc$')
 		ylabel('$P(k)$')
 		legend()
-		show()
 		
 	def _getInitialHeight(self,r,f,r1):
 		d1init = (self._s2_r1(0,r1)- self._s2_r1(1,r1)*self._S2_r1(0,r1)/self._S2_r1(1,r1))/(self._s2_0[0]*(1. - self._Beta_r1(r1)))

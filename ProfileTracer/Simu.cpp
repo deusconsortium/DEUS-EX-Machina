@@ -272,8 +272,7 @@ string Simu::saveVoidPositions(const float min_seuil, const float mean_seuil, co
             for(int v(0) ; v < extrema.nExtrema() ; v++)
             {
                 if(extrema.extremum(v)->avgSeuil() >= mean_seuil && extrema.extremum(v)->minSeuil() >= min_seuil && extrema.extremum(v)->density() <= max_density)
-                    new_file << extrema.extremum(v)->x() << "\t" << extrema.extremum(v)->y() << "\t" << extrema.extremum(v)->z()  << endl;  
-
+                    new_file << extrema.extremum(v)->x() << "\t" << extrema.extremum(v)->y() << "\t" << extrema.extremum(v)->z()  << "\t" <<extrema.extremum(v)->density() << endl;  
             }
             new_file.close();
             cout<<"Void position well registered !" << endl;
@@ -310,7 +309,7 @@ string Simu::saveHalosPositions(const int min_particles, const int max_particles
                 DEUSHalo* temp = Halos->halos(h);
 
                 if(temp->mass() >= min_particles && (max_particles == -1 || (max_particles > 0 && temp->mass() <= max_particles)))
-                    new_file << temp->x() << "\t" << temp->y() << "\t" << temp->z()  << endl;  
+                    new_file << temp->x() << "\t" << temp->y() << "\t" << temp->z()  << "\t" << temp->mass() << endl;  
                 
             }
             new_file.close();
@@ -363,6 +362,7 @@ void Simu::profileAnalysis(const string position_file,const string output_name,i
         vector<float> X(Nobjects);
         vector<float> Y(Nobjects);
         vector<float> Z(Nobjects);
+        vector<float> d0(Nobjects);
         
         cout<<endl<<"reading original file ..." << endl;
         
@@ -370,7 +370,7 @@ void Simu::profileAnalysis(const string position_file,const string output_name,i
         unsigned int i = 0;
         while(getline(file,ligne))
         {
-            file >> X[i] >> Y[i] >> Z[i];
+            file >> X[i] >> Y[i] >> Z[i] >> d0[i];
             i++;
         }
                 
@@ -391,7 +391,7 @@ void Simu::profileAnalysis(const string position_file,const string output_name,i
         }
         cout<<"filling the new file ..." << endl;
         for(unsigned int i(0) ; i < Nmax ; i++)
-            new_file << X[used_voids[i]] << "\t" << Y[used_voids[i]] << "\t" << Z[used_voids[i]]  << endl;
+            new_file << X[used_voids[i]] << "\t" << Y[used_voids[i]] << "\t" << Z[used_voids[i]]  << "\t" << d0[used_voids[i]] << endl;
         cout<<"done. Closing files"<<endl;
         new_file.close();
     } 
@@ -405,6 +405,7 @@ void Simu::profileAnalysis(const string position_file,const string output_name,i
         r_ramses[i] = _R0CoarseGrid*Rcell + i*_DrCoarseGrid*Rcell;
     
     vector<FVector> void_position;
+    vector<float> central_density;
     
     cout<<"Looking for file '"<<file_path<<"'"<<endl;
 
@@ -425,9 +426,10 @@ void Simu::profileAnalysis(const string position_file,const string output_name,i
     unsigned int i=0;
     while(getline(part_file,ligne))
     {
-        float gx,gy,gz;   
-        part_file >> gx >> gy >> gz;
-
+        float gx,gy,gz,d0;   
+        part_file >> gx >> gy >> gz >> d0;
+        central_density.push_back(d0);
+        
         void_position.push_back(FVector());
         void_position[i].x = gx;
         void_position[i].y = gy;
@@ -516,6 +518,7 @@ void Simu::profileAnalysis(const string position_file,const string output_name,i
             fwrite( &void_position[i].x , sizeof(float) , 1 , save_file);
             fwrite( &void_position[i].y , sizeof(float) , 1 , save_file);
             fwrite( &void_position[i].z , sizeof(float) , 1 , save_file);
+            fwrite( &central_density[i] , sizeof(float) , 1 , save_file);
             fwrite( &_f[i][0] , sizeof(float) , _f[i].size() , save_file);
             fwrite( &_v[i][0] , sizeof(float) , _v[i].size() , save_file);
         }

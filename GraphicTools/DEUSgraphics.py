@@ -32,6 +32,7 @@ class DEUSgraphics :
 		self._Nradius = 0
 		self._r = []
 		self._r1 = []
+		self._d0 = []
 		self._r1_d = []
 		self._r1_full = []
 		self._selected_profile = []
@@ -82,19 +83,31 @@ class DEUSgraphics :
 				self._v_tab = num.zeros((self._Nprofile,size(self._r)))
 				self._pos_tab = num.zeros((self._Nprofile,3))
 				self._r1_full = num.zeros(self._Nprofile)
+				self._d0 = num.zeros(self._Nprofile)
 				self._selected_profile = np.ones(self._Nprofile)
 				self._r1 = []
 				self._r1_d = []
 				
 				print 'extracting '+str(self._Nprofile)+' profiles ...'
+				#print 'CIC smoothing for each profile on R = '+str(0.62035*float(self._boxlen)/float(self._npart))+' [Mpc/h]'
+				sys.stdout.flush()
 				
 				#reading
 				cursor0 = 33 + Nc + 4*self._Nradius
-				dc = 12 + 8*self._Nradius
+				dc = 16 + 8*self._Nradius
 				for i in range(self._Nprofile):
 					self._pos_tab[i] = num.asarray(struct.unpack("fff", data[cursor0 + i*dc : cursor0 + i*dc + 12]))
-					self._f_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + i*dc + 12 : cursor0 + i*dc + 12 + 4*self._Nradius]))
-					self._v_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + i*dc + 12 + 4*self._Nradius : cursor0 + i*dc + 12 + 8*self._Nradius]))
+					#getting d0 for each profile
+					self._d0[i] = struct.unpack("f", data[cursor0 + i*dc + 12:cursor0 + i*dc + 16])
+					self._f_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + i*dc + 16 : cursor0 + i*dc + 16 + 4*self._Nradius]))
+					self._v_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + i*dc + 16 + 4*self._Nradius : cursor0 + i*dc + 16 + 8*self._Nradius]))
+					
+					#CIC smoothing
+					#self._f_tab[i] = CICDensitySmoothing(self._r,self._f_tab[i],0.62035*float(self._boxlen)/float(self._npart))
+					
+					#getting d0 for each profile
+					Rcic = 0.62035*float(self._boxlen)/float(self._npart)
+					#self._d0[i] = getCICCentralDensity(self._r[:10],self._f_tab[i][:10],Rcic)
 					
 					#r1 mass
 					r1 = solve(self._r,self._f_tab[i],1.)
@@ -250,11 +263,37 @@ class DEUSgraphics :
 			
 			if self._do_plot:
 				show()
-			
-			return mf,mv
+			else:
+				return mf,mv
 	
-	def PlotStatistics(self,Npoints = 0,normalized = False):
-		if Npoints is 0:
+	def PlotHeightStatistics(self,Npoints = 100,normalized = False):
+		d0_tab = num.linspace(min(self._d0),max(self._d0),Npoints)
+		Dd = 0.5*(d0_tab[1] - d0_tab[0])
+		Nd = num.zeros(Npoints)
+		
+		for i in range(Npoints):
+			Nd[i] = num.count_nonzero(self._mask(self._d0,[d0_tab[i] - Dd,d0_tab[i] + Dd]))
+		
+		if normalized:
+			fact = 0.0
+			for i in range(size(Nd)):
+				fact += Nd[i]*(2.*Dd)
+			Nd /= fact
+		
+		figure(1)
+		grid(True)
+		xlabel('$\\delta\\rho$',fontsize = 20)
+		
+		bar(d0_tab,Nd,width=2.*Dd,color='b')
+		
+		if self._do_plot:
+			show()
+		
+		else:
+			return d0_tab,Nd
+	
+	def PlotRadiusStatistics(self,Npoints = None,normalized = False):
+		if Npoints is None:
 			Npoints = size(self._r) - 1
 		Nr1 = num.zeros(Npoints)
 		Nr1d = num.zeros(Npoints)
