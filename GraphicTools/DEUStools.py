@@ -410,7 +410,7 @@ def dynamic_y(v,t,param):
 	w,e0,f0 = param
 	return [v[1], -v[1]/(num.sqrt(2.)*sqrt_Omega_m_y(w,e0,t)) + v[0] - f0*math.pow(v[0],-2)]
 
-def evolvePsi(r0,f0,a_tab,w,Wm0,zcmb,s0):
+def evolvePsi(f0,a_tab,w,Wm0,zcmb,s0):
 	if f0 == 1.:
 		if size(a_tab) > 1:
 			psi = num.empty(size(a_tab))
@@ -449,7 +449,7 @@ def evolveProfile(r0,f0,af,w,Wm0,zcmb,dlogD_dloga_cmb):
 		f = num.zeros(size(r0))
 		v = num.zeros(size(r0))
 		for j in range(size(r0)):
-			psi, v[j] = evolvePsi(r0[j],f0[j],af,w,Wm0,zcmb,s0)
+			psi, v[j] = evolvePsi(f0[j],af,w,Wm0,zcmb,s0)
 			r[j] = r0[j]*psi
 			if psi > 1.0e-2 and psi < 1.0e+5:
 				f[j] = f0[j]/(psi**3.)
@@ -460,7 +460,7 @@ def evolveProfile(r0,f0,af,w,Wm0,zcmb,dlogD_dloga_cmb):
 		f = num.zeros((size(af),size(r0)))
 		v = num.zeros((size(af),size(r0)))
 		for i in range(size(r0)):
-			psi,v[i] = evolvePsi(r0[i],f0[i],af,w,Wm0,zcmb,s0)
+			psi,v[i] = evolvePsi(f0[i],af,w,Wm0,zcmb,s0)
 			for j in range(size(af)):
 				r[j][i] = r0[i]*psi[j]
 				if psi[j] > 0. and psi[j] < 1.0e+5:

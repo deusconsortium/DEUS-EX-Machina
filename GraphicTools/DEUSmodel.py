@@ -86,8 +86,11 @@ class DEUSmodel(DEUSgraphics,DEUSanalytics):
 	def PlotHeightStatistics(self,Npoints = 100,normalized = True):
 		d0_tab,Nd = DEUSgraphics.PlotHeightStatistics(self,Npoints,normalized)
 		
-		dtheo_tab, Ndtheo = DEUSanalytics.computeLinearExtremumDistributionFromHeigh(self,1./self._a -1.)
-		plot(dtheo_tab, Ndtheo,'r-')
+		dtheo_lin, Ndtheo_lin = DEUSanalytics.computeLinearExtremumDistributionFromHeigh(self,1./self._a -1.)
+		dtheo_evo, Ndtheo_evo = DEUSanalytics.computeEvolvedExtremumDistributionFromHeigh(self,self._w,self._Wm0,1./self._a - 1.)
+		plot(dtheo_lin, Ndtheo_lin,'r--',label = 'Gaussian')
+		plot(dtheo_evo, Ndtheo_evo,'r-',label = 'evolved')
+		legend()
 		
 		show()
 

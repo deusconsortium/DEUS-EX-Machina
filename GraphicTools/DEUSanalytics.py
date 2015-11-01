@@ -170,7 +170,23 @@ class DEUSanalytics:
 		
 		return s0*v_tab + 1.0,Np*40.*sqrt(5.)*(num.pi)**(3./2.)/(s0*(29.-6.*sqrt(6.)))
 		
-	
+	def computeEvolvedExtremumDistributionFromHeigh(self,w,Wm0,z = None,nmax = 100):
+		#self.localSmoothSpectrum(0.62*float(self._boxlen)/float(self._npart),'th')
+		
+		d0,N0 = computeLinearExtremumDistributionFromHeigh(self,z,nmax)
+		if z is None:
+			return d0,N0
+		else:
+			print 'evolving N(d) ...'
+			
+			psi = num.ones(size(d0))
+			for i in range(size(psi)):
+				psi[i] = evolvePsi(d0[i],1./(z+1.),w,Wm0,self._zinit,self._dlogD_dloga_cmb)
+			N = psi**3./(1. - 3.*d0/psi*derivative(d0,psi))*N0
+			
+			return d0/psi**3.,N	
+		
+			
 	#miscellanous functions
 	
 	def _getSpectrumFactor(self,z = None):
