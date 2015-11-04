@@ -40,6 +40,15 @@ class DEUSgraphics :
 		self._v_tab = None
 		self._pos_tab = None
 		
+		#eventually Extremums files
+		
+		#self._FOFextremaPath = "../../../../jpasdeloup/DEUS-EX-Machina/compute_extrema/data/"
+		self._FOFextremaPath = "../compute_extrema/data/"
+		self._nFOFextrema = 0
+		self._density = num.array([])
+		self._seuil = num.array([])
+		self._mean_seuil = num.array([])
+		
 		self._do_plot = True
 	
 	def ListOutput(self):
@@ -50,11 +59,83 @@ class DEUSgraphics :
 		
 		num = int(raw_input("\nenter choice : "))
 		if num >= 0 and num < size(folder):
-			DEUSgraphics.Load(self,folder[num][:-12])
+			DEUSgraphics.LoadProfiles(self,folder[num][:-12])
+		else:
+			print 'index out of bounds'
+			
+	def ListFOFextrema(self):
+		folder = listdirHidden(self._FOFextremaPath)
+		print '\nchoose one FOFextrema file  to load :'
+		for i in range(size(folder)):
+			print "- "+str(i)+" : "+folder[i]
+		
+		num = int(raw_input("\nenter choice : "))
+		if num >= 0 and num < size(folder):
+			possibilities = filesThatEndAs(self._FOFextremaPath + folder[num]+ "/",".deus_extrema",18)
+			if size(possibilities) > 1:
+				for i in range(size(possibilities)):
+					print "\t- "+str(i)+" : "+str(possibilities[i])
+				simu = int(raw_input("\nenter choice : "))
+				if simu >= 0 and simu < size(possibilities):
+					DEUSgraphics.LoadFOFextrema(self,folder[num] + "/" + possibilities[simu])
+			else:
+				DEUSgraphics.LoadFOFextrema(self,folder[num] + "/" + possibilities[0])
 		else:
 			print 'index out of bounds'
 	
-	def Load(self,file_name = None):
+	def _LoadSingleFOFextrema(self,filename):
+		try:
+			File = open(filename, mode='rb')
+		except IOError :
+			return None,None,None,None
+			
+		data = File.read()
+		
+		#ignore first octet
+		Nextr = (struct.unpack(">i",data[4:8]))[0]
+		x = (struct.unpack(">i",data[8:12]))[0]
+		x = (struct.unpack(">i",data[12:16]))[0]
+		density = num.zeros(Nextr)
+		seuil = num.zeros(Nextr)
+		mean_seuil = num.zeros(Nextr)
+		
+		print 'extracting '+str(Nextr)+' extremas'
+		
+		for i in range(Nextr):
+			(x,y,z,d,s,ms) = struct.unpack(">ffffff",data[16 + 24*i:16 + 24*(i+1)])
+			density[i] = d
+			seuil[i] = s
+			mean_seuil[i] = ms
+			k = randint(0,1000)
+			if k >= 999:
+				print '-'
+				print x,y,z,d,s,ms
+		
+		return Nextr,density,seuil,mean_seuil
+				
+	
+	def LoadFOFextrema(self,file_name = None,nProc = None):
+		if file_name is None:
+			self.ListFOFextrema()
+		else:
+			root_name = self._FOFextremaPath  + file_name
+			
+			#getting file name
+			i = 0
+			while i is not None:
+				name = root_name + str(i).zfill(5) + ".deus_extrema"
+				n,d,s,ms = self._LoadSingleFOFextrema(name)				
+				if n is not None:
+					self._nFOFextrema += n
+					self._density = num.concatenate((self._density,d))
+					self._seuil = num.concatenate((self._seuil,s))
+					self._mean_seuil = num.concatenate((self._mean_seuil,ms))
+					i += 1
+					print 'file '+str(i)+' done'
+				else:
+					i = None
+	
+	def LoadProfiles(self,file_name = None):
 		if file_name is None:
 			self.ListOutput()
 		else:
@@ -97,8 +178,7 @@ class DEUSgraphics :
 				dc = 16 + 8*self._Nradius
 				for i in range(self._Nprofile):
 					self._pos_tab[i] = num.asarray(struct.unpack("fff", data[cursor0 + i*dc : cursor0 + i*dc + 12]))
-					#getting d0 for each profile
-					self._d0[i] = struct.unpack("f", data[cursor0 + i*dc + 12:cursor0 + i*dc + 16])
+					self._d0[i] = (struct.unpack("f",data[cursor0 + i*dc + 12:cursor0 + i*dc + 16]))[0]
 					self._f_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + i*dc + 16 : cursor0 + i*dc + 16 + 4*self._Nradius]))
 					self._v_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + i*dc + 16 + 4*self._Nradius : cursor0 + i*dc + 16 + 8*self._Nradius]))
 					
@@ -267,30 +347,39 @@ class DEUSgraphics :
 				return mf,mv
 	
 	def PlotHeightStatistics(self,Npoints = 100,normalized = False):
-		d0_tab = num.linspace(min(self._d0),max(self._d0),Npoints)
-		Dd = 0.5*(d0_tab[1] - d0_tab[0])
-		Nd = num.zeros(Npoints)
-		
-		for i in range(Npoints):
-			Nd[i] = num.count_nonzero(self._mask(self._d0,[d0_tab[i] - Dd,d0_tab[i] + Dd]))
-		
-		if normalized:
-			fact = 0.0
-			for i in range(size(Nd)):
-				fact += Nd[i]*(2.*Dd)
-			Nd /= fact
-		
-		figure(1)
-		grid(True)
-		xlabel('$\\delta\\rho$',fontsize = 20)
-		
-		bar(d0_tab,Nd,width=2.*Dd,color='b')
-		
-		if self._do_plot:
-			show()
-		
+		if self._nFOFextrema is 0:
+			print 'non FOFextrema file loaded. Call LoadFOFextrema first'
+			return None
 		else:
-			return d0_tab,Nd
+			mask = self._mask(self._seuil,[0.0,None])
+			if min(self._density < 0.0):
+				density = self._density[mask] + 1.
+			else:
+				density = self._density[mask]
+			
+			print 'selected '+str(num.count_nonzero(mask))+' minimums : '+str(100.*num.count_nonzero(mask)/float(self._nFOFextrema))+' % of initial densities'
+			
+			d0_tab = num.linspace(min(density),2.0,Npoints)
+			Dd = 0.5*(d0_tab[1] - d0_tab[0])
+			Nd = num.zeros(Npoints)
+			
+			for i in range(Npoints):
+				Nd[i] = num.count_nonzero(self._mask(density,[d0_tab[i] - Dd,d0_tab[i] + Dd]))
+			
+			if normalized:
+				Nd /= num.count_nonzero(mask)*2.*Dd
+			
+			figure(1)
+			grid(True)
+			xlabel('$\\delta\\rho$',fontsize = 20)
+			
+			bar(d0_tab,Nd,width=2.*Dd,color='b')
+			
+			if self._do_plot:
+				show()
+			
+			else:
+				return d0_tab,Nd
 	
 	def PlotRadiusStatistics(self,Npoints = None,normalized = False):
 		if Npoints is None:
@@ -379,9 +468,14 @@ class DEUSgraphics :
 		self._do_plot = doplot
  	
 	def _mask(self,masking_tab,limit_values):
-		mask_m = (masking_tab >= limit_values[0])
-		mask_p = (masking_tab <= limit_values[1])
-		return num.logical_and(mask_m,mask_p)
+		if limit_values[0] is None:
+			return (masking_tab <= limit_values[1])
+		elif limit_values[1] is None:
+			return (masking_tab >= limit_values[0])
+		else:
+			mask_m = (masking_tab >= min(limit_values))
+			mask_p = (masking_tab <= max(limit_values))
+			return num.logical_and(mask_m,mask_p)
 	
 	def _getMeanAndSigma(self,full_tab,mask):
 		if num.shape(full_tab)[0] == size(mask):

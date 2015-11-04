@@ -21,6 +21,7 @@ class DEUSanalytics:
 		self._s2_r = None
 		self._S2_r = None
 		self._r = None
+		self._s8 = None
 	
 	def Load(self,cosmo,rtab):
 		self._r = rtab
@@ -65,8 +66,13 @@ class DEUSanalytics:
 		x = self._k*float(boxlen)/float(npart)
 		#self._P = self._P*exp(-7*x**2./72.)+1./float(npart)*(1.-2./3.*sin(x/2.)**2.)
 		self._P = self._P*exp(-7*x**2./72.)
+		#self._P = self._P*Wth(0.87*x)**2.
 		self._Psmooth = num.copy(self._P)
 		self._computeSigmas()
+		
+		#calcul de s8
+		self._s8 = num.sqrt(1./(2.*num.pi**2.)*integrate(self._k,self._k**(2.)*self._P*Wth(self._k*8.0)))
+		
 	
 	def globalSmoothSpectrum(self,smoothing_radius,function = 'th'):
 		R = smoothing_radius
@@ -100,17 +106,20 @@ class DEUSanalytics:
 			P = self._P	
 			
 		prefactor = 1./(2.*(num.pi)**2.)
-		
+		k0 = self._k[0]
+		P0 = P[0]
 		for i in range(size(self._s2_0)):
-			self._s2_0[i] = prefactor*integrate(self._k,self._k**(2. + 2.*i)*P)
+			self._s2_0[i] = prefactor*(integrate(self._k,self._k**(2. + 2.*i)*P) + 0.5*k0**(3. + 2.*i)*P0)
 		
 		# ! careful to the pi factor in numpy sinc(x) = sin(pi*x)/(pi*x) !
 		for i in range(3):
 			for r in range(size(self._r)):
 				self._s2_r[i][r] = prefactor*integrate(self._k,self._k**(2. + 2.*i)*P*num.sinc(self._k*self._r[r]/num.pi))
 				self._S2_r[i][r] = prefactor*integrate(self._k,self._k**(2. + 2.*i)*P*Wth(self._k*self._r[r]))
+		
+		
 	
-	def computeR1Distribution(self,R1,individualR1smoothFactor = 0.5,indiviualSmoothFunction = 'th',normalized = True):			
+	def computeR1Distribution(self,R1,v0 = 0.,individualR1smoothFactor = 0.5,indiviualSmoothFunction = 'th',normalized = True):			
 		Nth = num.zeros(size(R1))		
 		Nthd = num.zeros(size(R1))		
 		
@@ -123,13 +132,14 @@ class DEUSanalytics:
 			B2 = self._Beta_r1(r1)
 			B2d = self._Beta_r1_d(r1)
 			G = self._Gamma()
+			F = (G**2. - B2)/(G*(1. - B2))
 			x = sqrt((B2**2. + G**2. - 2.*B2*G**2.)/(B2 - G**2.)**2.)
 			xd = sqrt((B2d**2. + G**2. - 2.*B2d*G**2.)/(B2d - G**2.)**2.)
 			y = self._s2_r1(0,r1)/self._S2_r1(0,r1) - self._s2_r1(1,r1)/self._S2_r1(1,r1)
 			yd = self._S2_r1(2,r1)/self._s2_r1(1,r1) - self._S2_r1(1,r1)/self._s2_r1(0,r1)
 			
-			Nth[i] = 3.*B2/(2.*r1*num.pi**2.*sqrt(2.))*G*sqrt(1. - G**2.)/(G**2. - B2)**2.*y*I_dn_dr1(x)				
-			Nthd[i] = r1*B2/(6.*num.pi**2.*sqrt(2.))*G*sqrt(1. - G**2.)/(G**2. - B2d)**2.*yd*I_dn_dr1(xd)				
+			Nth[i] = 3.*B2/(2.*r1*num.pi**2.*sqrt(2.))*G*sqrt(1. - G**2.)/(G**2. - B2)**2.*y*In(x,1,v0/F)				
+			Nthd[i] = r1*B2/(6.*num.pi**2.*sqrt(2.))*G*sqrt(1. - G**2.)/(G**2. - B2d)**2.*yd*In(xd,1,v0/F)				
 		
 		if normalized:
 			fact = integrate(R1,Nth)
@@ -147,17 +157,20 @@ class DEUSanalytics:
 		else:
 			return evolveProfile(self._r,f0,af,w,Wm0,self._zinit,self._dlogD_dloga_cmb)
 	
-	def computeLinearExtremumDistributionFromHeigh(self,z = None,nmax = 100):
+	def computeLinearExtremumDistributionFromHeigh(self,z = None,nmax = 200):
 		#self.localSmoothSpectrum(0.62*float(self._boxlen)/float(self._npart),'th')
+		
+		if z is None:
+			z = self._zinit
 		
 		g = self._Gamma()
 		s0 = sqrt(self._getSpectrumFactor(z)*self._s2_0[0])	
 
 		#self.resetSmoothing()
 		
-		print 'founded s0 = '+str(s0)+' and g = '+str(g)+' for z = '+str(z)+' with '+str(nmax)+' recursions'
-			
-		v_tab = num.linspace(-5.,1.,100)
+		print 'founded s0 = '+str(s0)+' and g = '+str(g)+' and s8 = '+str(self._s8)+ ' for z = '+str(z)+' with '+str(nmax)+' recursions'	
+		
+		v_tab = num.linspace(-5.0,-0.01,100)
 		Np = num.zeros(size(v_tab))
 		
 		for i in range(size(Np)):
@@ -170,10 +183,10 @@ class DEUSanalytics:
 		
 		return s0*v_tab + 1.0,Np*40.*sqrt(5.)*(num.pi)**(3./2.)/(s0*(29.-6.*sqrt(6.)))
 		
-	def computeEvolvedExtremumDistributionFromHeigh(self,w,Wm0,z = None,nmax = 100):
-		#self.localSmoothSpectrum(0.62*float(self._boxlen)/float(self._npart),'th')
+	def computeEvolvedExtremumDistributionFromHeigh(self,w,Wm0,z = None,nmax = 100):		
+		#computing the initial distribution at zinit
+		d0,N0 = self.computeLinearExtremumDistributionFromHeigh(self._zinit,nmax)
 		
-		d0,N0 = computeLinearExtremumDistributionFromHeigh(self,z,nmax)
 		if z is None:
 			return d0,N0
 		else:
@@ -181,8 +194,8 @@ class DEUSanalytics:
 			
 			psi = num.ones(size(d0))
 			for i in range(size(psi)):
-				psi[i] = evolvePsi(d0[i],1./(z+1.),w,Wm0,self._zinit,self._dlogD_dloga_cmb)
-			N = psi**3./(1. - 3.*d0/psi*derivative(d0,psi))*N0
+				psi[i],psip = evolvePsi(d0[i],1./(z+1.),w,Wm0,self._zinit,self._dlogD_dloga_cmb)
+			N = psi**3./(1. - 3.*(d0)/psi*derivative(d0,psi))*N0
 			
 			return d0/psi**3.,N	
 		

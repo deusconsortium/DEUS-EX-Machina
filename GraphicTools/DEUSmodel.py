@@ -18,7 +18,8 @@ class DEUSmodel(DEUSgraphics,DEUSanalytics):
 			:type arg1: string, None by defaut
 		"""
 		
-		DEUSgraphics.Load(self,file_name)
+		DEUSgraphics.LoadProfiles(self,file_name)
+		DEUSgraphics.LoadFOFextrema(self)
 		founded = DEUSanalytics.Load(self,self._cosmo,self._r)
 		
 		self._Wm0 = Omega_m_0(self._WmToday,self._w,self._zinit)
@@ -86,19 +87,25 @@ class DEUSmodel(DEUSgraphics,DEUSanalytics):
 	def PlotHeightStatistics(self,Npoints = 100,normalized = True):
 		d0_tab,Nd = DEUSgraphics.PlotHeightStatistics(self,Npoints,normalized)
 		
+		R = float(self._boxlen)/float(self._npart)
+		self.globalSmoothSpectrum(2.5*R,'exp')
+		
 		dtheo_lin, Ndtheo_lin = DEUSanalytics.computeLinearExtremumDistributionFromHeigh(self,1./self._a -1.)
-		dtheo_evo, Ndtheo_evo = DEUSanalytics.computeEvolvedExtremumDistributionFromHeigh(self,self._w,self._Wm0,1./self._a - 1.)
+		dtheo_evo, Ndtheo_evo = DEUSanalytics.computeEvolvedExtremumDistributionFromHeigh(self,-0.85,self._Wm0,1./self._a - 1.)
 		plot(dtheo_lin, Ndtheo_lin,'r--',label = 'Gaussian')
 		plot(dtheo_evo, Ndtheo_evo,'r-',label = 'evolved')
+		
+		xlim([0.0, 1.0])
+		
 		legend()
 		
 		show()
 
-	def PlotRadiusStatistics(self,Npoints = 0,normalized = True):
+	def PlotRadiusStatistics(self,v0 = 0.0,Npoints = None,normalized = True):
 		R1,Nr1,Nr1d = DEUSgraphics.PlotRadiusStatistics(self,Npoints,normalized)
 		
 		#R1 = num.add(R1, 0.5*(R1[2]-R1[1]))
-		Nth,Nthd = self.computeR1Distribution(R1,normalized = normalized)
+		Nth,Nthd = self.computeR1Distribution(R1,v0,normalized = normalized)
 		
 		subplot(211)
 		plot(R1,Nth,linestyle = '-',marker = '+', color = 'r',label = 'theory')
@@ -122,6 +129,7 @@ class DEUSmodel(DEUSgraphics,DEUSanalytics):
 		xlabel('$k$ in $h^{-1}.Mpc$')
 		ylabel('$P(k)$')
 		legend()
+		show()
 		
 	def _getInitialHeight(self,r,f,r1):
 		d1init = (self._s2_r1(0,r1)- self._s2_r1(1,r1)*self._S2_r1(0,r1)/self._S2_r1(1,r1))/(self._s2_0[0]*(1. - self._Beta_r1(r1)))

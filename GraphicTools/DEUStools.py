@@ -22,8 +22,11 @@ def I_dn_dr1(x):
 def Wg(a,b):
 	return exp(-(a+b)**2./2.)-exp(-(a-b)**2./2.) + b/2.*sqrt(2.*num.pi)*(erf((a-b)/sqrt(2.)) + erf((a+b)/sqrt(2.)))
 
-def In(x,n):
-	return   (-1.)**n*2.**(n/2.-2.)*gamma((1.+n)/2.)/(5.*sqrt(5.*num.pi))*( 
+def In(y,n,x0 = None):
+	#defini par l'integrale entre 0 et +infini, donc pas de (-1)^n	
+	if x0 is None:
+		x = y 
+		return   2.**(n/2.-2.)*gamma((1.+n)/2.)/(5.*sqrt(5.*num.pi))*( 
 			 10.*(n+1.)*(5.+x**2.)**(-(3.+n)/2.)
 			 - 32.*(5.+x**2.)**(-(1.+n)/2.)
 			 + 155.*2.**(3.+n)*(1.+n)*(5.+4.*x**2.)**(-(3.+n)/2.)
@@ -32,14 +35,39 @@ def In(x,n):
 			 - 75.*(1.+n)*x**(-(n+3.))*hyp2f1(1./2.,(3.+n)/2.,3./2.,-5./(4.*x**2.))
 			 + 50.*(1.+n)*(3.+n)*x**(-(n+5.))*hyp2f1(1./2.,(5.+n)/2.,3./2.,-5./x**2.)
 			 + 25.*(1.+n)*(3.+n)*x**(-(n+5.))*hyp2f1(1./2.,(5.+n)/2.,3./2.,-5./(4.*x**2.)))
+	else:
+		x_tab = num.linspace(x0,3.*sqrt(n + 3.)/y,1000)
+		F = x_tab**n*f(x_tab)*exp(-(x_tab*y)**2./2.)
+		return integrate(x_tab,F)
 
 def Cn(g,n):
-	if n is 0:
-		return In(1./sqrt(1.-g**2.),0)
-	else:
-		return g**n/(factorial(n)*(1.-g**2.)**n)*In(1./sqrt(1.-g**2.),n)
+	return (-g)**n/(factorial(n)*(1.-g**2.)**n)*In(1./sqrt(1.-g**2.),n)
 
 #useful functions
+
+def listdirHidden(dir_path):
+	flist = []
+	ini = os.listdir(dir_path)
+	for i in range(size(ini)):
+		if not ini[i].startswith('.'):
+			flist.append(ini[i])
+	return flist
+
+def filesThatEndAs(dir_path,end,end_char_to_cut = 0):
+	print 'looking in '+str(dir_path)+' for files ending as '+end
+	files = os.listdir(dir_path)
+	nE = len(end)
+	file_list = []
+	for i in range(size(files)):
+		if files[i][-nE:] == end:
+			if end_char_to_cut > 0:
+				file_list.append(files[i][:-end_char_to_cut])
+			else:
+				file_list.append(files[i])
+		else:
+			print 'comparing '+files[i][-nE:]+' to '+end
+			
+	return list(set(file_list))
 
 def derivative(x,y):
 	dy = num.zeros(size(y))
@@ -66,8 +94,12 @@ def solve(x,y,y0):
 
 def Wth(x):
 	W =  3.*(num.sin(x) - x*num.cos(x))/(num.power(x,3))
-	nan_pos = num.isnan(W)
-	W[nan_pos] = 1.0 
+	if size(x) > 1:
+		nan_pos = num.isnan(W)
+		W[nan_pos] = 1.0 
+	else:
+		if x is 0.0:
+			return 1.0
 	return W
 	
 def integrate(x,y,x0 = None,x1 = None):
