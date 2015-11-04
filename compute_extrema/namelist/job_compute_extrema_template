@@ -1,0 +1,27 @@
+#!/bin/sh
+
+cube='00001'
+simu='boxlen648_n1024_lcdmw5'
+Z=93
+filterScale=3
+nFiles=8
+outputfile=${simu}_Z${Z}_S${filterScale}
+
+cat > parameters.nml <<EOF
+&parameters
+nfact=1                                                     ! Use a grid nfact times thinner than coarse ramses grid (ignored for mpgrafic)
+rep='/data_bingo/Babel/${simu}/cube_${cube}/'  ! Repository to read
+infofile='info_${cube}.txt'                                   ! Ramses info file
+inputfiles='fof_${simu}_cube_'               ! Input file root    
+nchar='${cube}'                                               ! Output number
+nfiles=${nFiles}                                            ! Number of files (ignored for ramses} 
+iogroupsize=0                                               ! Number of file per group (0 if no group are used)
+outputfile='${outputfile}'                              ! Output file
+filterScale=${filterScale}.                                              ! Filter Scale such as filtering is on exp(-1/2*(x/FilterScale}^2) unit of coarse grid
+/
+EOF
+
+#RUN
+mkdir -p data/${outputfile}
+mpirun -np 16 ./compute_extrema parameters.nml
+
