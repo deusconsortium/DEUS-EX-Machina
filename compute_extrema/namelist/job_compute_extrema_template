@@ -3,9 +3,9 @@
 cube='00001'
 simu='boxlen648_n1024_lcdmw5'
 Z=93
-filterScale=3
+filterScale=2
 nFiles=8
-outputfile=${simu}_Z${Z}_S${filterScale}
+outputfile=${simu}_Z${Z}_S${filterScale}b
 
 cat > parameters.nml <<EOF
 &parameters
@@ -23,5 +23,5 @@ EOF
 
 #RUN
 mkdir -p data/${outputfile}
-mpirun -np 16 ./compute_extrema parameters.nml
+mpirun -np 32 ./compute_extrema parameters.nml
 

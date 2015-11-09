@@ -1,13 +1,15 @@
-#!/bin/sh
+#!/bin/bash
 
-cube='00001'
-simu='boxlen648_n1024_lcdmw5'
-Z=93
-filterScale=3
-nFiles=8
-outputfile=${simu}_Z${Z}_S${filterScale}
+simu=$1
+cube=$2
+Z=$3
+#filterScale=1
+nFiles=$4
 
-cat > parameters.nml <<EOF
+for filterScale in 1 2
+do
+    outputfile=${simu}_Z${Z}_S${filterScale}
+    cat > parameters.nml <<EOF
 &parameters
 nfact=1                                                     ! Use a grid nfact times thinner than coarse ramses grid (ignored for mpgrafic)
 rep='/data_bingo/Babel/${simu}/cube_${cube}/'  ! Repository to read
@@ -21,7 +23,7 @@ filterScale=${filterScale}.                                              ! Filte
 /
 EOF
 
-#RUN
-mkdir -p data/${outputfile}
-mpirun -np 16 ./compute_extrema parameters.nml
-
+    #RUN
+    mkdir -p data/${outputfile}
+    mpirun -np 16 ./compute_extrema parameters.nml
+done

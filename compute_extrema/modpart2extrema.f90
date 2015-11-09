@@ -410,31 +410,31 @@ contains
         ! ----------------------
         ! GENERATE DENSITY HISTO
         ! ----------------------
-        nb_histo = 100
+        nb_histo = 1000
         
-        allocate(density_histo(0:nb_histo))
+        allocate(density_histo(0:nb_histo-1))
         
         density_histo=0
         
         do iz = 1, usable_local_nz            
             do ix = 0, nx - 1                
                 do iy = 0, ny - 1
-                    rank_histo = nint(nb_histo*min(Smoothedcube(ix, iy, iz),3.0)/3.0)
+                    rank_histo = floor(nb_histo*min(Smoothedcube(ix, iy, iz),3.0)/3.0)
                     density_histo(rank_histo) = density_histo(rank_histo) + 1
                 enddo
             enddo
         enddo
         
-        density_histo = density_histo / sum(density_histo(0:nb_histo)) / nproc
+        density_histo = density_histo * nb_histo / sum(density_histo(0:nb_histo-1)) / nproc
         
-        allocate(all_density_histo(0:nb_histo, 0:nproc-1))
-        call MPI_Gather(density_histo, nb_histo+1, MPI_Type, all_density_histo, nb_histo+1, MPI_Type, 0, MPI_comm_world, mpierr)
+        allocate(all_density_histo(0:nb_histo-1, 0:nproc-1))
+        call MPI_Gather(density_histo, nb_histo, MPI_Type, all_density_histo, nb_histo, MPI_Type, 0, MPI_comm_world, mpierr)
         
         if(myid == 0) then
             density_histo = sum(all_density_histo,2)
             nomfich = 'data/' // trim(outputfile) // '/' // trim(outputfile) // '_all.deus_histo.txt'        
             open (unit = 3, file = nomfich)
-            do iz = 0, nb_histo
+            do iz = 0, nb_histo-1
                 write(3,*) density_histo(iz)
             enddo
             close(unit=3)
@@ -590,20 +590,20 @@ contains
         all_density_histo=0
         
         do ix = 1, nb_minima
-            rank_histo = nint(nb_histo*extremumToSave(ix,4))            
+            rank_histo = floor(nb_histo*extremumToSave(ix,4))            
             density_histo(rank_histo) = density_histo(rank_histo) + 1            
         enddo
         
         !density_histo = density_histo / total_minima
         
-        call MPI_Gather(density_histo, nb_histo+1, MPI_Type, all_density_histo, nb_histo+1, MPI_Type, 0, MPI_comm_world, mpierr)
+        call MPI_Gather(density_histo, nb_histo, MPI_Type, all_density_histo, nb_histo, MPI_Type, 0, MPI_comm_world, mpierr)
         
         if(myid == 0) then
             density_histo = sum(all_density_histo,2)
             nomfich = 'data/' // trim(outputfile) // '/' // trim(outputfile) // '_min.deus_histo.txt'        
             open (unit = 3, file = nomfich)
-            do iz = 0, nb_histo
-                write(3,*) density_histo(iz) / total_minima
+            do iz = 0, nb_histo -1
+                write(3,*) nb_histo * density_histo(iz) / total_minima
             enddo
             close(unit=3)
         endif
