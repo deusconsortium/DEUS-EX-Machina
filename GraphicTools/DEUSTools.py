@@ -43,7 +43,7 @@ def In(y,n,x0 = None):
 def Cn(g,n):
 	return (-g)**n/(factorial(n)*(1.-g**2.)**n)*In(1./sqrt(1.-g**2.),n)
 
-#useful functions
+#files functions
 
 def listdirHidden(dir_path):
 	flist = []
@@ -68,6 +68,8 @@ def filesThatEndAs(dir_path,end,end_char_to_cut = 0):
 			print 'comparing '+files[i][-nE:]+' to '+end
 			
 	return list(set(file_list))
+
+#useful functions
 
 def derivative(x,y):
 	dy = num.zeros(size(y))
@@ -219,7 +221,7 @@ def gaussianDensitySmoothing(r,f0,R,end_point_to_remove = 5,r1_factor = 2):
 	if R == 0.0 :
 		return f0
 	
-	print 'GAUSSIAN smoothing on '+str(R)+' [Mpc/h]'
+	#print 'GAUSSIAN smoothing on '+str(R)+' [Mpc/h]'
 	#print 'extending f0 by asymptotic behavior'
 	
 	#continuing artificially f0 by asymptotic fit
@@ -295,7 +297,7 @@ def getMassContrast(r,d):
 		return f[1:]
 	return f
 
-def getDensity(r,f,method = 'defaut'):
+def getDensity(r,f,method = 'simple'):
 	d = num.ones(size(r))
 	
 	if method == 'defaut':
@@ -304,9 +306,14 @@ def getDensity(r,f,method = 'defaut'):
 		for i in range(size(r)-1):
 			d[i] = 1./3.*(f[i+1]*r[i+1]**3. - f[i]*r[i]**3.)/(r[i]**2.*(r[i+1]-r[i]))
 	else:
-		for i in range(size(r)-1):
-			d[i] = 1./3.*(3.*r[i+1]*f[i]-4.*r[i]*f[i]+r[i]*f[i+1])/(r[i+1]-r[i])
-
+		x=r[size(r)-2]/r[size(r)-1]
+		d[size(r)-1] = (f[size(r)-1]-x**3.*f[size(r)-2])/((2.+x**2.)*(1.-x))
+		d[size(r)-2] = d[size(r)-1]
+		for i in range(size(r)-2):
+			j = size(r)-3-i
+			x = r[j]/r[j+1]
+			d[j] = 4./3.*(f[j+1]-x**3.*f[j])/((1.-x)*(1.+x**2.)) - d[j+1]/3.*(5.+x**2.)/(1.+x**2.)
+	
 	d[size(r)-1]=d[size(r)-2]
 	return d
 
@@ -441,6 +448,19 @@ def sqrt_Omega_m_y(w,e0,y):
 def dynamic_y(v,t,param):
 	w,e0,f0 = param
 	return [v[1], -v[1]/(num.sqrt(2.)*sqrt_Omega_m_y(w,e0,t)) + v[0] - f0*math.pow(v[0],-2)]
+
+def evolvePsiLinear(f0,a_tab,w,Wm0,zcmb,s0):
+	if f0 == 1.:
+		if size(a_tab) > 1:
+			psi = num.empty(size(a_tab))
+			for i in range(size(psi)):
+				psi[i] = 1.
+			return psi
+		else:
+			return 1.0
+	
+	n = Eta(a_tab,w,Wm0,s0,zcmb)
+	return 1.0 - (f0 - 1.)*n,0.0
 
 def evolvePsi(f0,a_tab,w,Wm0,zcmb,s0):
 	if f0 == 1.:

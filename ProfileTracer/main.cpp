@@ -18,12 +18,29 @@ using namespace std;
 int main(int argc, char** argv) {
     
     //interface utilisateur
-    int boxlen, npart,output,Max;
+    /*int boxlen, npart,output,Max;
     string cosmo,name;
     bool bo;
     string path = "none";
             
-    Simu my_simu = Simu();
+    Simu my_simu = Simu();*/
+    
+    int outputs[5] = {14,24,60,24,1};
+    int boxlen[5] = {5184,2592,2592,648,2592};
+    int npart[5] = {2048,1024,2048,1024,2048};
+    
+    for(unsigned int i=0; i < 5 ; i++)
+    {
+        Simu my_simu = Simu();
+        string name = "work_"+Tools::IntToString(boxlen[i])+"_"+Tools::IntToString(npart[i])+"_output"+Tools::IntToString(outputs[i]);
+        cout<<"loading simu "<<name<<endl;
+        my_simu.load(boxlen[i],npart[i],"lcdmw5",outputs[i]);
+        my_simu.setIsOverDensity(true);
+        string path = my_simu.saveHalosPositions(100,110);
+        my_simu.profileAnalysis(path,name,100000);
+    }
+    
+    /*
     
     cout<<endl<<"##################################################"<<endl;
     cout<<"#                ProfileTracer v1.0              #"<<endl;
@@ -81,6 +98,8 @@ int main(int argc, char** argv) {
     cout << "Enter max objects : ";
     cin >> Max;
     my_simu.profileAnalysis(path,name,Max);
+    
+    */
     return 0;
 }
 

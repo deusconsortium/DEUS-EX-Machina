@@ -1,7 +1,9 @@
-from DEUStools import*
 import struct
 from matplotlib.colors import LogNorm
 from random import randint
+
+from DEUSCosmo import*
+from DEUSTools import*
 
 #~ 
 #~ 
@@ -14,18 +16,11 @@ from random import randint
 
 #DEUSgraphics class
 
-class DEUSgraphics :
-	def __init__(self,data_path = '../ProfileTracer/data/output/'):
+class DEUSGraphics(DEUSCosmo) :
+	def __init__(self,zinit,data_path = '../ProfileTracer/data/output/'):
+		DEUSCosmo.__init__(self,zinit)
 		
-		self._H0 = 0.0
-		self._a = 0.0
-		self._WmToday = 0.0
-		self._w = -1.0
-		self._boxlen = 0
-		self._npart = 0
-		self._cosmo = None
-		self._isOverDensity = True
-		
+		self._isOverDensity = True		
 		self._dataPath = data_path
 		
 		self._Nprofile = 0
@@ -42,13 +37,6 @@ class DEUSgraphics :
 		
 		#eventually Extremums files
 		
-		#self._FOFextremaPath = "../../../../jpasdeloup/DEUS-EX-Machina/compute_extrema/data/"
-		self._FOFextremaPath = "../compute_extrema/data/"
-		self._nFOFextrema = 0
-		self._density = num.array([])
-		self._seuil = num.array([])
-		self._mean_seuil = num.array([])
-		
 		self._do_plot = True
 	
 	def ListOutput(self):
@@ -59,83 +47,11 @@ class DEUSgraphics :
 		
 		num = int(raw_input("\nenter choice : "))
 		if num >= 0 and num < size(folder):
-			DEUSgraphics.LoadProfiles(self,folder[num][:-12])
-		else:
-			print 'index out of bounds'
-			
-	def ListFOFextrema(self):
-		folder = listdirHidden(self._FOFextremaPath)
-		print '\nchoose one FOFextrema file  to load :'
-		for i in range(size(folder)):
-			print "- "+str(i)+" : "+folder[i]
-		
-		num = int(raw_input("\nenter choice : "))
-		if num >= 0 and num < size(folder):
-			possibilities = filesThatEndAs(self._FOFextremaPath + folder[num]+ "/",".deus_extrema",18)
-			if size(possibilities) > 1:
-				for i in range(size(possibilities)):
-					print "\t- "+str(i)+" : "+str(possibilities[i])
-				simu = int(raw_input("\nenter choice : "))
-				if simu >= 0 and simu < size(possibilities):
-					DEUSgraphics.LoadFOFextrema(self,folder[num] + "/" + possibilities[simu])
-			else:
-				DEUSgraphics.LoadFOFextrema(self,folder[num] + "/" + possibilities[0])
+			DEUSGraphics.Load(self,folder[num][:-12])
 		else:
 			print 'index out of bounds'
 	
-	def _LoadSingleFOFextrema(self,filename):
-		try:
-			File = open(filename, mode='rb')
-		except IOError :
-			return None,None,None,None
-			
-		data = File.read()
-		
-		#ignore first octet
-		Nextr = (struct.unpack(">i",data[4:8]))[0]
-		x = (struct.unpack(">i",data[8:12]))[0]
-		x = (struct.unpack(">i",data[12:16]))[0]
-		density = num.zeros(Nextr)
-		seuil = num.zeros(Nextr)
-		mean_seuil = num.zeros(Nextr)
-		
-		print 'extracting '+str(Nextr)+' extremas'
-		
-		for i in range(Nextr):
-			(x,y,z,d,s,ms) = struct.unpack(">ffffff",data[16 + 24*i:16 + 24*(i+1)])
-			density[i] = d
-			seuil[i] = s
-			mean_seuil[i] = ms
-			k = randint(0,1000)
-			if k >= 999:
-				print '-'
-				print x,y,z,d,s,ms
-		
-		return Nextr,density,seuil,mean_seuil
-				
-	
-	def LoadFOFextrema(self,file_name = None,nProc = None):
-		if file_name is None:
-			self.ListFOFextrema()
-		else:
-			root_name = self._FOFextremaPath  + file_name
-			
-			#getting file name
-			i = 0
-			while i is not None:
-				name = root_name + str(i).zfill(5) + ".deus_extrema"
-				n,d,s,ms = self._LoadSingleFOFextrema(name)				
-				if n is not None:
-					self._nFOFextrema += n
-					self._density = num.concatenate((self._density,d))
-					self._seuil = num.concatenate((self._seuil,s))
-					self._mean_seuil = num.concatenate((self._mean_seuil,ms))
-					i += 1
-					print 'file '+str(i)+' done'
-				else:
-					i = None
-	
-	def LoadProfiles(self,file_name = None):
+	def Load(self,file_name = None):
 		if file_name is None:
 			self.ListOutput()
 		else:
@@ -169,8 +85,10 @@ class DEUSgraphics :
 				self._r1 = []
 				self._r1_d = []
 				
+				#cosmo settings
+				self._SetSimu(self._boxlen,self._npart,self._cosmo)
+				
 				print 'extracting '+str(self._Nprofile)+' profiles ...'
-				#print 'CIC smoothing for each profile on R = '+str(0.62035*float(self._boxlen)/float(self._npart))+' [Mpc/h]'
 				sys.stdout.flush()
 				
 				#reading
@@ -182,12 +100,8 @@ class DEUSgraphics :
 					self._f_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + i*dc + 16 : cursor0 + i*dc + 16 + 4*self._Nradius]))
 					self._v_tab[i] = num.asarray(struct.unpack("f" * (self._Nradius), data[cursor0 + i*dc + 16 + 4*self._Nradius : cursor0 + i*dc + 16 + 8*self._Nradius]))
 					
-					#CIC smoothing
-					#self._f_tab[i] = CICDensitySmoothing(self._r,self._f_tab[i],0.62035*float(self._boxlen)/float(self._npart))
-					
-					#getting d0 for each profile
-					Rcic = 0.62035*float(self._boxlen)/float(self._npart)
-					#self._d0[i] = getCICCentralDensity(self._r[:10],self._f_tab[i][:10],Rcic)
+					#R = float(self._boxlen)/float(self._npart)
+					#self._f_tab[i] = gaussianDensitySmoothing(self._r,self._f_tab[i],R)
 					
 					#r1 mass
 					r1 = solve(self._r,self._f_tab[i],1.)
@@ -204,8 +118,6 @@ class DEUSgraphics :
 				
 				self._r1 = num.asarray(self._r1)
 				self._r1_d = num.asarray(self._r1_d)
-				
-				print 'Warning : w = -1'
 	
 	#save compact data
 	def Save(self,filename = ''):
@@ -318,10 +230,12 @@ class DEUSgraphics :
 		if N > 0:
 			fig = figure(1)
 			
+			"""
 			r,f = IncreaseResolution(self._r,mf,Precision)
 			r,df = IncreaseResolution(self._r,sf,Precision)
 			r,v = IncreaseResolution(self._r,mv,Precision)
 			r,dv = IncreaseResolution(self._r,sv,Precision)
+			"""
 			
 			subplot(211)
 			grid(True)
@@ -345,41 +259,6 @@ class DEUSgraphics :
 				show()
 			else:
 				return mf,mv
-	
-	def PlotHeightStatistics(self,Npoints = 100,normalized = False):
-		if self._nFOFextrema is 0:
-			print 'non FOFextrema file loaded. Call LoadFOFextrema first'
-			return None
-		else:
-			mask = self._mask(self._seuil,[0.0,None])
-			if min(self._density < 0.0):
-				density = self._density[mask] + 1.
-			else:
-				density = self._density[mask]
-			
-			print 'selected '+str(num.count_nonzero(mask))+' minimums : '+str(100.*num.count_nonzero(mask)/float(self._nFOFextrema))+' % of initial densities'
-			
-			d0_tab = num.linspace(min(density),2.0,Npoints)
-			Dd = 0.5*(d0_tab[1] - d0_tab[0])
-			Nd = num.zeros(Npoints)
-			
-			for i in range(Npoints):
-				Nd[i] = num.count_nonzero(self._mask(density,[d0_tab[i] - Dd,d0_tab[i] + Dd]))
-			
-			if normalized:
-				Nd /= num.count_nonzero(mask)*2.*Dd
-			
-			figure(1)
-			grid(True)
-			xlabel('$\\delta\\rho$',fontsize = 20)
-			
-			bar(d0_tab,Nd,width=2.*Dd,color='b')
-			
-			if self._do_plot:
-				show()
-			
-			else:
-				return d0_tab,Nd
 	
 	def PlotRadiusStatistics(self,Npoints = None,normalized = False):
 		if Npoints is None:
@@ -430,25 +309,25 @@ class DEUSgraphics :
 		
 		return r1,Nr1,Nr1d
 	
-	def PlotRadiusDistribution(self):
+	def PlotRadiusDistribution(self,N=100):
 		figure(1)
 		grid(True)	
 		xlabel('$r_1$ in $[Mpc/h]$')
 		ylabel('$r_1^\\delta$ in $[Mpc/h]$')
 		
-		N = size(self._r) - 1
 		xerr = num.zeros(N)
 		yerr = num.zeros(N)
 		r1m = num.zeros(N)
 		r1dm = num.zeros(N)
+		r = num.linspace(min(self._r1_d),max(self._r1_d),N+1)
 		
 		for i in range(N):
-			rM = ma.masked_outside(self._r1,self._r[i], self._r[i+1])
+			rM = ma.masked_outside(self._r1,r[i],r[i+1])
 			r1m[i] = rM.mean()
 			xerr[i] = 1.96*rM.std()/float(sqrt(rM.count()))
 			rD = ma.masked_array(self._r1_d, rM.mask)
 			r1dm[i] = rD.mean()
-			yerr[i] = 1.96*rD.std()/float(sqrt(rM.count()))
+			yerr[i] = 1.96*rD.std()/float(sqrt(rD.count()))
 		
 		errorbar(r1m, r1dm, xerr = xerr,yerr=yerr, fmt='o', ecolor='g')
 		plot(r1m,2./3.*r1m,linestyle = '--', color = 'r',label = '$r_1^\\delta =2/3r_1$')
@@ -458,7 +337,7 @@ class DEUSgraphics :
 		grid(True)	
 		xlabel('$r_1$ in $[Mpc/h]$')
 		ylabel('$r_1^\\delta$ in $[Mpc/h]$')
-		hist2d(self._r1, self._r1_d, bins = size(self._r))
+		hist2d(self._r1, self._r1_d, bins = size(self._r),norm=LogNorm())
 		colorbar()
 		show()
 	

@@ -4,7 +4,7 @@ cube='00001'
 simu='boxlen648_n1024_lcdmw5'
 Z=93
 filterScale=3
-nFiles=8
+nFiles=8													#number of FOF files
 outputfile=${simu}_Z${Z}_S${filterScale}
 
 cat > parameters.nml <<EOF
@@ -23,5 +23,7 @@ EOF
 
 #RUN
 mkdir -p data/${outputfile}
-mpirun -np 16 ./compute_extrema parameters.nml
+mpirun -np 16 ./compute_extrema parameters.nml		#can set the number of procs
+
+#to launch : run namelist/job_compute_exetrema_template in the previous folder
 

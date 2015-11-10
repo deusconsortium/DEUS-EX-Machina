@@ -1,21 +1,10 @@
-from DEUStools import*
+from DEUSTools import*
+from DEUSCosmo import*
 
-class DEUSanalytics:
+class DEUSAnalytics(DEUSCosmo):
 	
-	def __init__(self,zinit):		
-		self._power_spectrum_path = '/efiler2/bingo_save/Babel/data/'
-	
-		self._zinit = zinit
-		self._dlogD_dloga_cmb = 1.0
-		
-		self._a_tab = num.empty([1])
-		self._D_tab = num.empty([1])
-		self._dlogD_dloga_tab = num.empty([1])
-		
-		self._P = num.empty([1])
-		self._P0 = num.empty([1])
-		self._Psmooth = num.empty([1])
-		self._k = num.empty([1])
+	def __init__(self,zinit):
+		DEUSCosmo.__init__(self,zinit)	
 		
 		self._s2_0 = num.zeros(3)
 		self._s2_r = None
@@ -27,63 +16,32 @@ class DEUSanalytics:
 		self._r = rtab
 		
 		self._s2_r = num.zeros((3,size(self._r)))
-		self._S2_r = num.zeros((3,size(self._r)))		
-		founded = True
+		self._S2_r = num.zeros((3,size(self._r)))
 		
-		try:
-			k,P = num.loadtxt(self._power_spectrum_path + 'pk_' + cosmo + '.dat', usecols=(0, 1), unpack=True)
-			a,D,dD = num.loadtxt(self._power_spectrum_path + 'mpgrafic_input_' + cosmo + '.dat', usecols=(0,2,3), unpack=True)
-		except IOError:
-			founded = False
-			print 'error : no P/k or D/a file in ' + self._power_spectrum_path
-		
-		if founded:
-			self._dlogD_dloga_cmb = solve(dD,a,1./(self._zinit + 1.0))
-			if self._dlogD_dloga_cmb is None:
-				self._dlogD_dloga_cmb = 1.0
-				
-			self._a_tab = num.copy(a)
-			self._D_tab = num.copy(D)
-			self._dlogD_dloga_tab = num.copy(dD)
-				
-			#transcripting P/k in linear scale
-			self._k = num.copy(k)
-			self._P = num.copy(P)
-			self._Psmooth = num.copy(self._P)
-			self._P0 = num.copy(P)
-
-		return founded
+		if self._LoadSpectrum():
+			self._Psmooth = num.copy(self._P0)
+			self._computeSigmas()
+			
+			return True
+		return False
 		
 	def getPowerSpectrum(self):
-		return self._k,self._P,self._Psmooth
+		return self._k,self._P0,self._Psmooth
 	
 	def resetSmoothing(self):
-		self._Psmooth = num.copy(self._P)
-		
-	def numericalSmoothing(self,boxlen,npart):
-		print 'smoothing the Linear spectrum to obtain the effective spectrum'
-		
-		x = self._k*float(boxlen)/float(npart)
-		#self._P = self._P*exp(-7*x**2./72.)+1./float(npart)*(1.-2./3.*sin(x/2.)**2.)
-		self._P = self._P*exp(-7*x**2./72.)
-		#self._P = self._P*Wth(0.87*x)**2.
-		self._Psmooth = num.copy(self._P)
+		self._Psmooth = num.copy(self._P0)
 		self._computeSigmas()
-		
-		#calcul de s8
-		self._s8 = num.sqrt(1./(2.*num.pi**2.)*integrate(self._k,self._k**(2.)*self._P*Wth(self._k*8.0)))
-		
 	
 	def globalSmoothSpectrum(self,smoothing_radius,function = 'th'):
 		R = smoothing_radius
 		if function == 'th':
 			print 'global TOP-HAT  smoothing on R = '+str(R)+' [Mpc/h]'
-			self._Psmooth = num.copy(self._P*Wth(self._k*R)**2.)
-			self._P = self._P*Wth(self._k*R)**2.						
+			self._Psmooth = num.copy(self._P0*Wth(self._k*R)**2.)
+			self._P0 = self._P0*Wth(self._k*R)**2.						
 		elif function == 'exp':
 			print 'global GAUSSIAN smoothing on R = '+str(R)+' [Mpc/h]'
-			self._Psmooth = num.copy(self._P*exp(-(self._k*R)**2.))
-			self._P = self._P*exp(-(self._k*R)**2.)
+			self._Psmooth = num.copy(self._P0*exp(-(self._k*R)**2.))
+			self._P0 = self._P0*exp(-(self._k*R)**2.)
 		else:
 			print 'unknown smoothing function : '+ function
 		self._computeSigmas()
@@ -101,23 +59,28 @@ class DEUSanalytics:
 		else:
 			print 'unknown smoothing function : '+ function
 	
-	def _computeSigmas(self,P = 'self'):
+	def _computeSigmas0(self,P = 'self'):
 		if P == 'self':
-			P = self._P	
+			P = self._P0	
 			
 		prefactor = 1./(2.*(num.pi)**2.)
-		k0 = self._k[0]
-		P0 = P[0]
 		for i in range(size(self._s2_0)):
-			self._s2_0[i] = prefactor*(integrate(self._k,self._k**(2. + 2.*i)*P) + 0.5*k0**(3. + 2.*i)*P0)
+			self._s2_0[i] = prefactor*(integrate(self._k,self._k**(2. + 2.*i)*P))
+
+
+	def _computeSigmas(self,P = 'self'):
+		if P == 'self':
+			P = self._P0
+			
+		prefactor = 1./(2.*(num.pi)**2.)
+		for i in range(size(self._s2_0)):
+			self._s2_0[i] = prefactor*(integrate(self._k,self._k**(2. + 2.*i)*P))
 		
 		# ! careful to the pi factor in numpy sinc(x) = sin(pi*x)/(pi*x) !
 		for i in range(3):
 			for r in range(size(self._r)):
 				self._s2_r[i][r] = prefactor*integrate(self._k,self._k**(2. + 2.*i)*P*num.sinc(self._k*self._r[r]/num.pi))
 				self._S2_r[i][r] = prefactor*integrate(self._k,self._k**(2. + 2.*i)*P*Wth(self._k*self._r[r]))
-		
-		
 	
 	def computeR1Distribution(self,R1,v0 = 0.,individualR1smoothFactor = 0.5,indiviualSmoothFunction = 'th',normalized = True):			
 		Nth = num.zeros(size(R1))		
@@ -140,7 +103,10 @@ class DEUSanalytics:
 			
 			Nth[i] = 3.*B2/(2.*r1*num.pi**2.*sqrt(2.))*G*sqrt(1. - G**2.)/(G**2. - B2)**2.*y*In(x,1,v0/F)				
 			Nthd[i] = r1*B2/(6.*num.pi**2.*sqrt(2.))*G*sqrt(1. - G**2.)/(G**2. - B2d)**2.*yd*In(xd,1,v0/F)				
-		
+			
+			if individualR1smoothFactor > 0.0:
+				self.resetSmoothing()
+	
 		if normalized:
 			fact = integrate(R1,Nth)
 			Nth /= fact
@@ -153,20 +119,16 @@ class DEUSanalytics:
 		f0 = 1. + d0*(self._S2_r[0]- self._S2_r[1]*self._S2_r1(0,r1)/self._S2_r1(1,r1))/(self._s2_0[0]*(1. - self._Beta_r1(r1)))
 		
 		if af is None:
-			return self._r,f0,-(f0 - 1.)*self._dlogD_dloga_cmb/3.
+			return self._r,f0,-(f0 - 1.)*self._dlogD_dloga_init/3.
 		else:
-			return evolveProfile(self._r,f0,af,w,Wm0,self._zinit,self._dlogD_dloga_cmb)
+			return evolveProfile(self._r,f0,af,w,Wm0,self._zinit,self._dlogD_dloga_init)
 	
 	def computeLinearExtremumDistributionFromHeigh(self,z = None,nmax = 200):
-		#self.localSmoothSpectrum(0.62*float(self._boxlen)/float(self._npart),'th')
-		
 		if z is None:
 			z = self._zinit
 		
 		g = self._Gamma()
 		s0 = sqrt(self._getSpectrumFactor(z)*self._s2_0[0])	
-
-		#self.resetSmoothing()
 		
 		print 'founded s0 = '+str(s0)+' and g = '+str(g)+' and s8 = '+str(self._s8)+ ' for z = '+str(z)+' with '+str(nmax)+' recursions'	
 		
@@ -182,7 +144,32 @@ class DEUSanalytics:
 			Np[i] = exp(-v**2./(2.*(1.-g**2.)))/((2.*num.pi)**2.*sqrt(2.*(1.-g**2.)))*CN
 		
 		return s0*v_tab + 1.0,Np*40.*sqrt(5.)*(num.pi)**(3./2.)/(s0*(29.-6.*sqrt(6.)))
+	
+	def computeLinearDensityPDF(self,z = None,nmax = 100):			
+		s0 = sqrt(self._getSpectrumFactor(z)*self._s2_0[0])
 		
+		v_tab = num.linspace(-3.0,3.,100)
+		
+		Np = 1./(num.sqrt(2.*num.pi*s0**2.))*exp(-v_tab**2./2.)
+		return s0*v_tab + 1.,Np
+	
+	def computeZeldovitchExtremumDistributionFromHeigh(self,w,Wm0,z = None,nmax = 100):		
+		#computing the initial distribution at zinit
+		d0,N0 = self.computeLinearExtremumDistributionFromHeigh(self._zinit,nmax)
+		
+		if z is None:
+			return d0,N0
+		else:
+			print "evolving N(d) by Zel'Dovitch..."
+			
+			psi = num.ones(size(d0))
+			for i in range(size(psi)):
+				psi[i],psip = evolvePsiLinear(d0[i],1./(z+1.),w,Wm0,self._zinit,self._dlogD_dloga_init)
+			N = psi**3./(1. - 3.*(d0)/psi*derivative(d0,psi))*N0
+			
+			return d0/psi**3.,N	
+		
+	
 	def computeEvolvedExtremumDistributionFromHeigh(self,w,Wm0,z = None,nmax = 100):		
 		#computing the initial distribution at zinit
 		d0,N0 = self.computeLinearExtremumDistributionFromHeigh(self._zinit,nmax)
@@ -194,7 +181,7 @@ class DEUSanalytics:
 			
 			psi = num.ones(size(d0))
 			for i in range(size(psi)):
-				psi[i],psip = evolvePsi(d0[i],1./(z+1.),w,Wm0,self._zinit,self._dlogD_dloga_cmb)
+				psi[i],psip = evolvePsi(d0[i],1./(z+1.),w,Wm0,self._zinit,self._dlogD_dloga_init)
 			N = psi**3./(1. - 3.*(d0)/psi*derivative(d0,psi))*N0
 			
 			return d0/psi**3.,N	

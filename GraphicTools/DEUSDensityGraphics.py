@@ -2,7 +2,7 @@ __author__ = 'jpasdeloup'
 import numpy as np
 import matplotlib.pyplot as plt
 
-class DEUSExtremaGraphics :
+class DEUSDensityGraphics :
 
     def __init__(self):
         self.dir = "../compute_extrema/data/"
