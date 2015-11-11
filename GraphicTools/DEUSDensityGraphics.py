@@ -2,23 +2,31 @@ __author__ = 'jpasdeloup'
 import numpy as np
 import matplotlib.pyplot as plt
 
-class DEUSDensityGraphics :
+class DEUSExtremaGraphics :
 
     def __init__(self):
         self.dir = "../compute_extrema/data/"
+        self.nb_histo = 1000
+        self.glob_start = -1.0
+        self.glob_end = 2.0
+        self.min_start = -1.0
+        self.min_end = 0.0
 
     def loadGlob(self, simu, Z, S):
         file_root = self._fileRoot(simu, Z, S)
         data = np.loadtxt(self.dir + file_root + '/' + file_root + '_all.deus_histo.txt')
-        data = np.delete(data, 100)
-        densityscale = np.linspace(-1.0,2.0,100)
-        return densityscale, data
+        data = np.delete(data, self.nb_histo-1)        
+        densityscale = np.linspace(self.glob_start,self.glob_end,self.nb_histo,0)
+        densityscale = np.delete(densityscale, self.nb_histo-1)
+        delta = densityscale[2] - densityscale[1]
+        return densityscale, data, delta
 
     def loadMin(self, simu, Z, S):
         file_root = self._fileRoot(simu, Z, S)
-        data = np.loadtxt(self.dir + file_root + '/' + file_root + '_min.deus_histo.txt')
-        densityscale = np.linspace(-1.0,0.0,101)
-        return densityscale, data
+        data = np.loadtxt(self.dir + file_root + '/' + file_root + '_min.deus_histo.txt')        
+        densityscale = np.linspace(self.min_start,self.min_end,self.nb_histo,0)        
+        delta = densityscale[2] - densityscale[1]
+        return densityscale, data, delta
 
     @staticmethod
     def _fileRoot(simu, Z, S):
@@ -27,49 +35,67 @@ class DEUSDensityGraphics :
     def showDensity(self):
         plt.figure(1)
 
+        simu = ['boxlen648_n1024_lcdmw5'] # ['boxlen2592_n1024_lcdmw5','boxlen648_n1024_rpcdmw5','boxlen648_n1024_lcdmw5']
+        S = ["1","2"] #["2"] # ["1","2","3"]
+        Z = ["0"] #["56","18","8","4","2","1","0"] # ["81","19","9","4","2","1","0"] ["93","36","17","9","4","2","1","0"] 
+        
+        # GLOBAL
         plt.subplot(211)
         plt.grid(True)
+        
+        for mySimu in simu:
+            for myZ in Z:
+                for myS in S:
+                    
+                    myLegend =  " "+ mySimu + " Z="+ myZ #" S="+ myS
+                    myLabel = "S=" + myS
+                    #myLegend =  " Z="+ myZ + " S="+ myS
+                    #myLabel = mySimu
+                    
+                    # Load data
+                    densityscale,data,delta = self.loadGlob(mySimu,myZ,myS)                                        
+                    
+                    # If histo
+                    #plt.bar(densityscale, data, delta, label = myLabel)
+                    
+                    # If points
+                    densityscale += delta/2  # move point to middle of area
+                    plt.plot(densityscale, data, label = myLabel, marker = '.')                                      
+        
+                    # Legend
+                    plt.legend(title="Total density" + myLegend, loc='upper right', ncol=3) 
 
-        simu = 'boxlen648_n1024_lcdmw5'
-        S = ["1","2","3"]
-        Z = "93" #["93","36","17","9","4","2","1","0"]
+                    # Limits
+                    plt.xlim([-1.0,2.0])
+                    #plt.ylim([0.0,0.55])
 
-        # for myZ in Z:
-        #     data = self.loadGlob(simu,myZ,S)
-        #     plt.plot(densityscale, data, label = 'Z='+myZ, marker = '.')
-        # plt.legend(title="Total density S="+S, loc='upper center', ncol=3)
-
-        for myS in S:
-            densityscale,data = self.loadGlob(simu,Z,myS)
-            plt.plot(densityscale, data, label = 'S='+myS, marker = '.')
-        plt.legend(title="Total density Z="+Z, loc='upper center', ncol=3)
-
-        plt.xlim([-1.0,0.0])
-        #plt.ylim([0.0,0.35])
-
+        # MINS
         plt.subplot(212)
         plt.grid(True)
+        
+        for mySimu in simu:
+            for myZ in Z:
+                for myS in S:
+                    
+                    myLegend =  " "+ mySimu + " Z="+ myZ #" S="+ myS
+                    myLabel = "S=" + myS
+                    
+                    # Load data
+                    densityscale,data,delta = self.loadMin(mySimu,myZ,myS)                                        
+                    
+                    # If histo
+                    #plt.bar(densityscale, data, delta, label = myLabel)
+                    
+                    # If points
+                    densityscale += delta/2  # move point to middle of area
+                    plt.plot(densityscale, data, label = myLabel, marker = '.')                                      
+        
+                    # Legend
+                    plt.legend(title="Minima density" + myLegend, loc='upper right', ncol=3)
 
-        # for myZ in Z:
-        #     data = self.loadMin(simu,myZ,S)
-        #     plt.plot(densityscale, data, label = 'Z='+myZ, marker = '.')
-        # plt.legend(title="Minima density S="+S, loc='upper center', ncol=3)
-
-        for myS in S:
-            densityscale,data = self.loadMin(simu,Z,myS)
-            plt.plot(densityscale, data, label = 'S='+myS, marker = '.')
-        plt.legend(title="Minima density Z="+Z, loc='upper center', ncol=3)
-
-        plt.xlim([-1.0,0.0])
-        #plt.ylim([0.0,0.25])
-
-        # plt.subplot(212)
-        # plt.grid(True)
-        # densityscale = np.linspace(-1.0,0.0,100)
-        # plt.plot(densityscale, self.mins0, color = 'r', label = 'Z= 0 (414 330 minima)', marker = '.')
-        # plt.plot(densityscale, self.mins36, color = 'g', label = 'Z=36 (559 930 minima)', marker = '.')
-        # plt.plot(densityscale, self.mins93, color = 'b', label = 'Z=93 (568 781 minima)', marker = '.')
-        # plt.legend(title="Minima density", loc='upper center')
+                    # Limits
+                    plt.xlim([-1.0,0.0])
+                    #plt.ylim([0.0,0.55])
 
         plt.show()
         plt.clf()
