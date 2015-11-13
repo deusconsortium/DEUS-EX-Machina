@@ -1,7 +1,7 @@
 from DEUSTools import*
 
 class DEUSCosmo:	
-	def __init__(self,zinit):
+	def __init__(self,zinit = 1100.):
 		self._power_spectrum_path = '/data_bingo/Babel/data/'
 		self._zinit = zinit
 		
@@ -26,6 +26,17 @@ class DEUSCosmo:
 	def _SetSimu(self,boxlen,npart,cosmo):
 		self._boxlen = boxlen
 		self._npart = npart
+		
+		#getting zinit
+		try:
+			b,n,z = num.loadtxt("simu_infos.txt", usecols=(0, 1, 2), unpack=True)
+			for i in range(size(b)):
+				if b[i]==boxlen and n[i]==npart:
+					self._zinit = z[i]
+			print "readed zinit = "+str(self._zinit)
+		except IOError:
+			print "error : no file simu_infos.txt"
+		
 		self._cosmo = cosmo
 		if cosmo=="lcdmw5":
 			self._WmToday = 0.26
@@ -73,6 +84,13 @@ class DEUSCosmo:
 			
 			return founded
 
+	def getDlogD_dloga(self,z):
+		d = solve(self._dlogD_dloga_tab,self._a_tab,1./(z + 1.))
+		if d is not None:
+			return d
+		else:
+			return 1.0
+
 	def _GaussianSmoothing(self,R):
 		self._P0 = self._P0*exp(-(self._k*R)**2.)
 	
@@ -89,6 +107,7 @@ class DEUSCosmo:
 		self._P0 = num.copy(Pused)
 		"""
 		
-		#R = 0.62*float(self._boxlen)/float(self._npart)
-		#self._P0 = self._P0*Wth(self._k*R)**2.
+		R = 0.62*float(self._boxlen)/float(self._npart)
+		#R = float(self._boxlen)/float(self._npart)
+		self._P0 = self._P0*Wth(self._k*R)**2.
 		#self._P0 = self._P0*exp(-(self._k*R)**2.)

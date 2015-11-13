@@ -3,9 +3,9 @@ from DEUSAnalytics import*
 
 class DEUSProfile(DEUSGraphics,DEUSAnalytics):
 	
-	def __init__(self,zinit = 50.0,datapath = '../ProfileTracer/data/output/'):
-		DEUSGraphics.__init__(self,zinit,datapath)
-		DEUSAnalytics.__init__(self,zinit)
+	def __init__(self,datapath = '../ProfileTracer/data/output/'):
+		DEUSGraphics.__init__(self,datapath)
+		DEUSAnalytics.__init__(self)
 			
 		self._do_plot = False
 	
@@ -16,21 +16,25 @@ class DEUSProfile(DEUSGraphics,DEUSAnalytics):
 			:type arg1: string, None by defaut
 		"""
 		
-		DEUSGraphics.Load(self,file_name)		
+		DEUSGraphics.Load(self,file_name)	
 		if DEUSAnalytics.Load(self,self._cosmo,self._r):
 			self._NumericalSmoothing()
 			self._computeSigmas()
 	
 	#overiding functions
 	def PlotMeanProfile(self,R1value,Dr1 = 'dr',Rsmooth = 0.0):
+		figure(1)
 		f,v = DEUSGraphics.PlotMeanProfile(self,R1value,Dr1,Rsmooth)
 		
 		print 'computing initial profile ...'
 		r1 = solve(self._r,f,1.0)
 		
 		if r1 is not None:
-			self.localSmoothSpectrum(0.5*r1,'th')
+#			self.localSmoothSpectrum(0.5*r1,'th')
+			#self.localSmoothSpectrum(10.0,'th')
 			#self.localSmoothSpectrum(r1,'th')
+			R0 = 0.62035*float(self._boxlen)/float(self._npart)
+			self.localSmoothSpectrum(R0,'exp')
 			
 			if Rsmooth > 0.0:
 				self.localSmoothSpectrum(Rsmooth,'exp')	

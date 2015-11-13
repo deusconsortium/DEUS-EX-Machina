@@ -3,8 +3,8 @@ from DEUSCosmo import*
 
 class DEUSAnalytics(DEUSCosmo):
 	
-	def __init__(self,zinit):
-		DEUSCosmo.__init__(self,zinit)	
+	def __init__(self):
+		DEUSCosmo.__init__(self)	
 		
 		self._s2_0 = num.zeros(3)
 		self._s2_r = None
@@ -170,9 +170,15 @@ class DEUSAnalytics(DEUSCosmo):
 			return d0/psi**3.,N	
 		
 	
-	def computeEvolvedExtremumDistributionFromHeigh(self,w,Wm0,z = None,nmax = 100):		
+	def computeEvolvedExtremumDistributionFromHeigh(self,w,Wm0,z = None,nmax = 100,zinit = None):
+		if zinit is None:
+			zinit = self._zinit
+			dlogD = self._dlogD_dloga_init
+		else:
+			dlogD = self.getDlogD_dloga(zinit)
+		
 		#computing the initial distribution at zinit
-		d0,N0 = self.computeLinearExtremumDistributionFromHeigh(self._zinit,nmax)
+		d0,N0 = self.computeLinearExtremumDistributionFromHeigh(zinit,nmax)
 		
 		if z is None:
 			return d0,N0
@@ -181,7 +187,7 @@ class DEUSAnalytics(DEUSCosmo):
 			
 			psi = num.ones(size(d0))
 			for i in range(size(psi)):
-				psi[i],psip = evolvePsi(d0[i],1./(z+1.),w,Wm0,self._zinit,self._dlogD_dloga_init)
+				psi[i],psip = evolvePsi(d0[i],1./(z+1.),w,Wm0,zinit,dlogD)
 			N = psi**3./(1. - 3.*(d0)/psi*derivative(d0,psi))*N0
 			
 			return d0/psi**3.,N	

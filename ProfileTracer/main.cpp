@@ -25,19 +25,24 @@ int main(int argc, char** argv) {
             
     Simu my_simu = Simu();*/
     
-    int outputs[5] = {14,24,60,24,1};
-    int boxlen[5] = {5184,2592,2592,648,2592};
-    int npart[5] = {2048,1024,2048,1024,2048};
+    int outputs[8] = {56,52,45,39,25,18,6,1};
+    int boxlen = 2592;
+    int npart = 2048;
     
-    for(unsigned int i=0; i < 5 ; i++)
+    Simu my_simu = Simu();
+    string name = "work_Z_200_210_"+Tools::IntToString(boxlen)+"_"+Tools::IntToString(npart)+"_output"+Tools::IntToString(outputs[0]);
+    my_simu.load(boxlen,npart,"lcdmw5",outputs[0]);
+    my_simu.setIsOverDensity(true);
+    string path = my_simu.saveHalosPositions(200,210);
+    my_simu.profileAnalysis(path,name,10000);
+    
+    for(unsigned int i=1; i<8 ; i++)
     {
         Simu my_simu = Simu();
-        string name = "work_"+Tools::IntToString(boxlen[i])+"_"+Tools::IntToString(npart[i])+"_output"+Tools::IntToString(outputs[i]);
-        cout<<"loading simu "<<name<<endl;
-        my_simu.load(boxlen[i],npart[i],"lcdmw5",outputs[i]);
+        string name = "work_Z_200_210_"+Tools::IntToString(boxlen)+"_"+Tools::IntToString(npart)+"_output"+Tools::IntToString(outputs[i]);
+        my_simu.load(boxlen,npart,"lcdmw5",outputs[i]);
         my_simu.setIsOverDensity(true);
-        string path = my_simu.saveHalosPositions(100,110);
-        my_simu.profileAnalysis(path,name,100000);
+        my_simu.profileAnalysis(path,name);
     }
     
     /*

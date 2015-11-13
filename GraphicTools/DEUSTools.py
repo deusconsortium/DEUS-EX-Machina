@@ -71,6 +71,14 @@ def filesThatEndAs(dir_path,end,end_char_to_cut = 0):
 
 #useful functions
 
+def fraction(x1,y1,x2,y2,Npoints = 100):
+	x = num.linspace(max(min(x1),min(x2)),min(max(x1),max(x2)),Npoints)
+	f1 = SplineFit(x1,y1)
+	f2 = SplineFit(x2,y2)
+	
+	return x,f2(x)/f1(x)
+	
+
 def derivative(x,y):
 	dy = num.zeros(size(y))
 	
@@ -82,16 +90,16 @@ def derivative(x,y):
 	return dy
 
 def solve(x,y,y0):
-		if size(x) == size(y):
-			if y[0] > y0:
-				for i in range(size(y) - 1):
-					if y[i] >= y0 and y[i+1] <= y0:
-						return x[i + 1] + (y[i+1] - y0)*(x[i] - x[i+1])/(y[i+1] - y[i])
-			else:
-				for i in range(size(y) - 1):
-					if y[i] <= y0 and y[i+1] >= y0:
-						return x[i + 1] + (y[i+1] - y0)*(x[i] - x[i+1])/(y[i+1] - y[i])
-		return None
+	if size(x) == size(y):
+		if y[0] > y0:
+			for i in range(size(y) - 1):
+				if y[i] >= y0 and y[i+1] <= y0:
+					return x[i+1] + (y[i+1] - y0)*(x[i] - x[i+1])/(y[i+1] - y[i])
+		else:
+			for i in range(size(y) - 1):
+				if y[i] <= y0 and y[i+1] >= y0:
+					return x[i + 1] + (y[i+1] - y0)*(x[i] - x[i+1])/(y[i+1] - y[i])
+	return None
 
 
 def Wth(x):
@@ -411,6 +419,10 @@ def IncreaseResolution(x,y,factor = 2):
 
 #plotting function
 
+def errorplot(x,y,dy,linestyle = '-',color = 'b',marker = 'o',label = None):
+	errorbar(x, y, yerr=dy, xerr=None,fmt= None, ecolor=color)
+	plot(x,y,linestyle = linestyle,color = color,marker = marker,label = label)
+
 def plotProfiles(x,various_y,labels):
 	figure(1)
 	
@@ -424,6 +436,32 @@ def plotProfiles(x,various_y,labels):
 	legend()
 	show()				
 
+def Plot(x,y):
+	figure(0)
+	grid(True)
+	plot(x,y)
+	show()
+
+#miscelanous functions
+
+def selectFile(folder_path,nb_char_to_remove = None):
+	folder = os.listdir(folder_path)
+	print '\nchoose one file to load :'
+	for i in range(size(folder)):
+		if nb_char_to_remove is not None:
+			print "- "+str(i)+" : "+folder[i][:-nb_char_to_remove]
+		else:
+			print "- "+str(i)+" : "+folder[i]
+	
+	num = int(raw_input("\nenter choice : "))
+	if num >= 0 and num < size(folder):
+		if nb_char_to_remove is not None:
+			return folder[num][:-nb_char_to_remove]
+		else:
+			return folder[num]
+	else:
+		print 'index out of bounds'
+		return None
 
 #integration scheme
 

@@ -10,6 +10,7 @@
 
 #include "Tools.h"
 #include "WaitingBar.h"
+#include <vector>
 #include "FOFReaderLib/FOFReaderLib.h"
 #include "FOFReaderLib/FOFFiles/FOFParticles.h"
 
@@ -54,6 +55,8 @@ public:
     string getCosmo()   const{return _cosmo;}
     int getOutput() const{return _output;}
     
+    void setRadiusInterval(const float rmin,const float rmax, const int Npints);
+    
     void setNumpyCores(int nc){ _Numpy_cores = nc;}
     
     void setDrCoarseGrid(float dr){ _DrCoarseGrid = dr;}
@@ -66,6 +69,7 @@ private:
     void ProfileAroundPosition(FVector Position ,vector<float> & f,vector<float> & v,FOFMultiCube & multi,vector<float> const radius_ramses);
     void PeculiarSpeedAroundPosition(FVector Position, FVector & speed,FOFMultiCube & multi, float const radius_ramses);
 
+    bool getParticlesPositions(FOFMultiCube & multi,vector<long long> & index, vector<float> & X, vector<float> & Y, vector<float> & Z, FVector guess_CoM) const;
     
     //les propriétés de la simu
     string _data_path,_minimum_file_path,_save_name,_cosmo;

@@ -30,6 +30,7 @@ class DEUSGraphics(DEUSCosmo) :
 		self._d0 = []
 		self._r1_d = []
 		self._r1_full = []
+		self._r1d_full = []
 		self._selected_profile = []
 		self._f_tab = None
 		self._v_tab = None
@@ -39,21 +40,12 @@ class DEUSGraphics(DEUSCosmo) :
 		
 		self._do_plot = True
 	
-	def ListOutput(self):
-		folder = os.listdir(self._dataPath)
-		print '\nchoose one output to load :'
-		for i in range(size(folder)):
-			print "- "+str(i)+" : "+folder[i][:-12]
-		
-		num = int(raw_input("\nenter choice : "))
-		if num >= 0 and num < size(folder):
-			DEUSGraphics.Load(self,folder[num][:-12])
-		else:
-			print 'index out of bounds'
+	def setDoPlot(self,doPlot = False):
+		self._do_plot = doPlot
 	
 	def Load(self,file_name = None):
 		if file_name is None:
-			self.ListOutput()
+			DEUSGraphics.Load(self,selectFile(self._dataPath,12))
 		else:
 			fileName = self._dataPath + '/' + file_name + '.DEUSprofile'
 			File = open(fileName, mode='rb')
@@ -80,6 +72,7 @@ class DEUSGraphics(DEUSCosmo) :
 				self._v_tab = num.zeros((self._Nprofile,size(self._r)))
 				self._pos_tab = num.zeros((self._Nprofile,3))
 				self._r1_full = num.zeros(self._Nprofile)
+				self._r1d_full = num.zeros(self._Nprofile)
 				self._d0 = num.zeros(self._Nprofile)
 				self._selected_profile = np.ones(self._Nprofile)
 				self._r1 = []
@@ -104,10 +97,11 @@ class DEUSGraphics(DEUSCosmo) :
 					#self._f_tab[i] = gaussianDensitySmoothing(self._r,self._f_tab[i],R)
 					
 					#r1 mass
-					r1 = solve(self._r,self._f_tab[i],1.)
+					r1 = solve(self._r,self._f_tab[i],1.0)
 					d = getDensity(self._r,self._f_tab[i])
 					r1_d = solve(self._r,d,1.0)
 					self._r1_full[i] = r1
+					self._r1d_full[i] = r1_d
 					
 					self._selected_profile[i] = False
 					
@@ -211,9 +205,33 @@ class DEUSGraphics(DEUSCosmo) :
 			
 			return fig
 	
+	def getMeanProfile(self,R1value,Dr1 = 'dr',select_density = False,r1d_factor = 0.5):
+		if Dr1 == 'dr':
+			Dr1 = 0.5*(self._r[1] - self._r[0])
+		
+		mNone = num.logical_not(ma.masked_invalid(self._r1_full).mask)
+		dNone = num.logical_not(ma.masked_invalid(self._r1d_full).mask)
+		
+		mask_m = num.logical_and(ma.masked_inside(self._r1_full,R1value, R1value + Dr1).mask,mNone)
+		
+		if select_density:
+			r1dm = ma.masked_array(self._r1d_full,num.logical_not(num.logical_and(mask_m,dNone))).mean()
+		
+			mask_d = num.logical_and(ma.masked_inside(self._r1d_full,max(r1dm-r1d_factor*Dr1,0.0), r1dm + r1d_factor*Dr1).mask,mNone)
+		
+			mask = num.logical_and(mask_m,mask_d)
+		else:
+			mask = mask_m
+		
+		mf,sf,N = self._getMeanAndSigma(self._f_tab,mask)
+		mv,sv,N = self._getMeanAndSigma(self._v_tab,mask)
+		
+		return self._r,mf,sf,mv,sv
+	
 	def PlotMeanProfile(self,R1value,Dr1 = 'dr',Rsmooth = 0.0,Precision = 2):
 		if Dr1 == 'dr':
 			Dr1 = self._r[2] - self._r[1]
+			
 		mask = ma.masked_inside(self._r1_full,R1value, R1value + Dr1).mask
 		mf,sf,N = self._getMeanAndSigma(self._f_tab,mask)
 		mv,sv,N = self._getMeanAndSigma(self._v_tab,mask)
@@ -228,7 +246,8 @@ class DEUSGraphics(DEUSCosmo) :
 			sf = 0.5*num.fabs(Mfp - Mfm)/1.96*sqrt(N)
 		
 		if N > 0:
-			fig = figure(1)
+			if self._do_plot:
+				fig = figure(1)
 			
 			"""
 			r,f = IncreaseResolution(self._r,mf,Precision)
@@ -236,6 +255,7 @@ class DEUSGraphics(DEUSCosmo) :
 			r,v = IncreaseResolution(self._r,mv,Precision)
 			r,dv = IncreaseResolution(self._r,sv,Precision)
 			"""
+			r,f,df,v,dv = self._r,mf,sf,mv,sv
 			
 			subplot(211)
 			grid(True)
@@ -366,11 +386,14 @@ class DEUSGraphics(DEUSCosmo) :
 				if mask[i]:
 					mean = num.add(mean,full_tab[i])
 					index.append(i)
-			mean /= size(index)
-			
-			for j in range(size(index)):
-				sigma2 =  num.add(sigma2,(full_tab[index[j]] - mean)*(full_tab[index[j]] - mean))
-			return mean,sqrt(sigma2/size(index)),size(index)
+			if size(index)>0:
+				mean /= size(index)
+				
+				for j in range(size(index)):
+					sigma2 =  num.add(sigma2,(full_tab[index[j]] - mean)*(full_tab[index[j]] - mean))
+				return mean,sqrt(sigma2/size(index)),size(index)
+			else:
+				return None,None,0
 		else:
 			print 'input arrays have not the same lenght : ' + str(shape(full_tab)) + ' vs ' + str(shape(mask))
 			return 0.0,0.0,0.0

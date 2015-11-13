@@ -126,6 +126,14 @@ bool Simu::load(int const Boxlen, int const Npart,string cosmo,int output)
     return true;
 }
 
+void Simu::setRadiusInterval(const float rmin,const float rmax, const int Npoints)
+{
+    float toGrid = float(_npart)/float(_boxlen);
+    _R0CoarseGrid = rmin*toGrid;
+    _RmaxCoarseGrid = rmax*toGrid;
+    _DrCoarseGrid = (_RmaxCoarseGrid - _R0CoarseGrid)/(Npoints - 1);
+}
+
 void Simu::PeculiarSpeedAroundPosition(FVector Position, FVector & speed,FOFMultiCube & multi, float const radius_ramses)
 {
     speed.x = 0.0;
@@ -162,6 +170,50 @@ void Simu::PeculiarSpeedAroundPosition(FVector Position, FVector & speed,FOFMult
     speed.y /= float(count);
     speed.z /= float(count);
 }
+
+
+bool Simu::getParticlesPositions(FOFMultiCube & multi,vector<long long> & index, vector<float> & X, vector<float> & Y, vector<float> & Z, FVector guess_CoM)    const
+{
+    X.clear();
+    Y.clear();
+    Z.clear();
+    
+    DEUSArea Zone(guess_CoM.x,guess_CoM.y, guess_CoM.z,3./float(_npart));
+
+    for(int cube (0) ; cube < multi.nCubes() ; cube ++) 
+    {
+        if(Zone.cubeIntersect(multi.cubes(cube)->boundaries()))
+        {
+            for(int particle(0) ; particle < multi.cubes(cube)->npart(); particle ++)
+            {
+                float xp = multi.cubes(cube)->posX(particle);
+                float yp = multi.cubes(cube)->posY(particle);
+                float zp = multi.cubes(cube)->posZ(particle);
+                long long ID = multi.cubes(cube)->id(particle);
+                
+                if(Zone.particuleIsInside(xp,yp,zp))
+                {
+                    if(X.size() == index.size())
+                        goto end;
+                   
+                    for(int i(0) ;  i < index.size() ; i++)
+                        if( index[i] == ID )
+                        {
+                            X.push_back(xp);
+                            Y.push_back(yp);
+                            Z.push_back(zp);
+                        }
+                    }
+            }
+        }
+    }
+    
+    end:
+    if(X.size() != index.size())
+        return false;
+    return true;
+}
+
 
 void Simu::ProfileAroundPosition(FVector Position ,vector<float> & f,vector<float> & v,FOFMultiCube & multi,vector<float> const radius_ramses)
 {
@@ -320,7 +372,6 @@ string Simu::saveHalosPositions(const int min_particles, const int max_particles
     }
     return "";
 }
-
 
 void Simu::profileAnalysis(const string position_file,const string output_name,int const Nmax)
 {
