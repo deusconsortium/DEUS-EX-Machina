@@ -23,7 +23,35 @@
 #  
 
 from DEUSProfile import*
+from DEUSDensity import*
 
+test = DEUSDensity()
+#test.Load("boxlen648_n1024_lcdmw5_Z93_S2")
+test.Load("boxlen2592_n1024_lcdmw5_Z56_S1")
+d0,P0 = test._dmin[-150:] + 1.,test._minPDF[-150:]
+
+w,Wm0,dlogD,z,zinit = test._w,test._Wm0,test._dlogD_dloga_init,1./test._a - 1.,test._zinit
+
+psi = num.ones(size(d0))
+for i in range(size(psi)):
+	psi[i],v = evolvePsi(d0[i],.95,w,Wm0,zinit,dlogD)
+	
+Pt = psi**3./(1. - 3.*derivative(log(d0),log(psi)))*P0
+dt = d0/psi**3.
+
+test.Load("boxlen2592_n1024_lcdmw5_Z0_S1")
+df,Pf = test._dmin + 1.,test._minPDF
+
+dtheo_evo, Ndtheo_evo = test.computeEvolvedExtremumDistributionFromHeigh(w,Wm0,0.0)
+
+figure(1)
+grid(True)
+plot(df,Pf,'bo')
+plot(dt,Pt,'r-')
+plot(dtheo_evo,Ndtheo_evo,'g-')
+show()
+
+"""
 test = DEUSGraphics(1100.)
 r1_tab = [15.,20.,50.,100.]
 colors = ['r','b','g','k']
@@ -52,7 +80,7 @@ for i in range(size(r1_tab)):
 	x,y = fraction(r0,f0,r,f)
 	plot(r,f,marker = '*',linestyle = '-',color = colors[i],label = "simu2 "+str(r1_tab[i]))
 
-"""
+
 #varier Mp
 r1 = 20.
 xlabel('r in [Mpc/h]')
@@ -75,9 +103,9 @@ r,f,df,v,dv = test.getMeanProfile(r1)
 x,y = fraction(r0,f0 - 1.0,r,f - 1.0,20)
 plot(r,f,marker='+',color = 'g',label ="2592_2048")
 #plot(r,f,marker='+',color = 'g',label ="2592_2048")
-"""
+
 
 legend()
 show()
-
+"""
 

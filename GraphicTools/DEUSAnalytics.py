@@ -168,7 +168,6 @@ class DEUSAnalytics(DEUSCosmo):
 			N = psi**3./(1. - 3.*(d0)/psi*derivative(d0,psi))*N0
 			
 			return d0/psi**3.,N	
-		
 	
 	def computeEvolvedExtremumDistributionFromHeigh(self,w,Wm0,z = None,nmax = 100,zinit = None):
 		if zinit is None:
@@ -187,7 +186,7 @@ class DEUSAnalytics(DEUSCosmo):
 			
 			psi = num.ones(size(d0))
 			for i in range(size(psi)):
-				psi[i],psip = evolvePsi(d0[i],1./(z+1.),w,Wm0,zinit,dlogD)
+				psi[i],psip = evolvePsi(d0[i] + 1.,1./(z+1.),w,Wm0,zinit,dlogD)
 			N = psi**3./(1. - 3.*(d0)/psi*derivative(d0,psi))*N0
 			
 			return d0/psi**3.,N	

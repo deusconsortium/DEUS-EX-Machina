@@ -305,7 +305,7 @@ def getMassContrast(r,d):
 		return f[1:]
 	return f
 
-def getDensity(r,f,method = 'simple'):
+def getDensity(r,f,method = 'defaut'):
 	d = num.ones(size(r))
 	
 	if method == 'defaut':
