@@ -6,24 +6,31 @@ class DEUSExtremaGraphics :
 
     def __init__(self):
         self.dir = "../compute_extrema/data/"
-        self.nb_histo = 1000
+        self.dirj = "../compute_extrema/data.jean/"
+        self.nb_histo = 1001
         self.glob_start = -1.0
         self.glob_end = 2.0
         self.min_start = -1.0
         self.min_end = 0.0
 
-    def loadGlob(self, simu, Z, S):
+    def loadGlob(self, simu, Z, S, endfile=None):
         file_root = self._fileRoot(simu, Z, S)
-        data = np.loadtxt(self.dir + file_root + '/' + file_root + '_all.deus_histo.txt')
-        data = np.delete(data, self.nb_histo-1)        
+        if endfile is None:
+            data = np.loadtxt(self.dirj + file_root + '/' + file_root + '_all.deus_histo.txt')
+        else:
+            data = np.loadtxt(self.dir + file_root + '/' + file_root + '_all' + endfile + '.deus_histo.txt')
+        data = np.delete(data, self.nb_histo-1)
         densityscale = np.linspace(self.glob_start,self.glob_end,self.nb_histo,0)
         densityscale = np.delete(densityscale, self.nb_histo-1)        
         return densityscale, data
 
-    def loadMin(self, simu, Z, S):
+    def loadMin(self, simu, Z, S, endfile=None):
         file_root = self._fileRoot(simu, Z, S)
-        data = np.loadtxt(self.dir + file_root + '/' + file_root + '_min.deus_histo.txt')        
-        densityscale = np.linspace(self.min_start,self.min_end,self.nb_histo,0)        
+        if endfile is None:
+            data = np.loadtxt(self.dirj + file_root + '/' + file_root + '_min.deus_histo.txt')
+        else:
+            data = np.loadtxt(self.dir + file_root + '/' + file_root + '_min'+ endfile + '.deus_histo.txt')
+        densityscale = np.linspace(self.min_start,self.min_end,self.nb_histo,0)
         return densityscale, data
 
     @staticmethod

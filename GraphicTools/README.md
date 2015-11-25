@@ -11,7 +11,7 @@ Includes a python class DEUSgraphics that can be used to load and plot several q
 ```
 #define an object that will study over-densities from the file 'my_data_file.DEUSprofile'
 plotter = DEUSgraphics(True)
-plotter.Load('my_data_file')
+plotter.load('my_data_file')
 
 #this last call be be also done in the constructor
 plotter = DEUSgraphics(True,'my_data_file')

@@ -2,7 +2,7 @@
 
 rm $0
 
-python "DEUSmodel.py"
+python "run.py"
 
 echo "
 

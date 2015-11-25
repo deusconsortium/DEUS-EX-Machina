@@ -1,0 +1,11 @@
+&parameters
+nfact=1                                                     ! Use a grid nfact times thinner than coarse ramses grid (ignored for mpgrafic)
+rep='/data_bingo/Babel/boxlen648_n256_rpcdmw5/cube_00004/'  ! Repository to read
+infofile='info_00004.txt'                                   ! Ramses info file
+inputfiles='fof_boxlen648_n256_rpcdmw5_cube_'               ! Input file root    
+nchar='00004'                                               ! Output number
+nfiles=64                                            ! Number of files (ignored for ramses} 
+iogroupsize=0                                               ! Number of file per group (0 if no group are used)
+outputfile='boxlen648_n256_rpcdmw5_Z6_S0'                              ! Output file
+filterScale=0.                                              ! Filter Scale such as filtering is on exp(-1/2*(x/FilterScale}^2) unit of coarse grid
+/

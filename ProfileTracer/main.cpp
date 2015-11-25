@@ -25,26 +25,17 @@ int main(int argc, char** argv) {
             
     Simu my_simu = Simu();*/
     
-    int outputs[8] = {56,52,45,39,25,18,6,1};
-    int boxlen = 2592;
-    int npart = 2048;
+    //int outputs[8] = {56,52,45,39,25,18,6,1};
     
     Simu my_simu = Simu();
-    string name = "work_Z_200_210_"+Tools::IntToString(boxlen)+"_"+Tools::IntToString(npart)+"_output"+Tools::IntToString(outputs[0]);
-    my_simu.load(boxlen,npart,"lcdmw5",outputs[0]);
+    my_simu.load(2592,2048,"lcdmw5",60);
     my_simu.setIsOverDensity(true);
-    string path = my_simu.saveHalosPositions(200,210);
-    my_simu.profileAnalysis(path,name,10000);
-    
-    for(unsigned int i=1; i<8 ; i++)
-    {
-        Simu my_simu = Simu();
-        string name = "work_Z_200_210_"+Tools::IntToString(boxlen)+"_"+Tools::IntToString(npart)+"_output"+Tools::IntToString(outputs[i]);
-        my_simu.load(boxlen,npart,"lcdmw5",outputs[i]);
-        my_simu.setIsOverDensity(true);
-        my_simu.profileAnalysis(path,name);
-    }
-    
+    my_simu.profileAnalysis(my_simu.saveHalosPositions(100,110),"workSameMh2592",100000);
+
+    my_simu.load(648,1024,"lcdmw5",24);
+    my_simu.setIsOverDensity(true);
+    my_simu.profileAnalysis(my_simu.saveHalosPositions(800,880),"workSameMh648",100000);
+
     /*
     
     cout<<endl<<"##################################################"<<endl;

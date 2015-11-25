@@ -6,7 +6,7 @@
  */
 
 #ifndef SIMU_H
-#define	SIMU_H
+#define    SIMU_H
 
 #include "Tools.h"
 #include "WaitingBar.h"
@@ -15,76 +15,96 @@
 #include "FOFReaderLib/FOFFiles/FOFParticles.h"
 
 #define Pi 3.14159265359
-struct SimuData
-{
-    float unit_l,unit_d,unit_t,unit_m,unit_v;
-    float a_exp,H0,omega_m,omega_l,omega_k,omega_b;
+struct SimuData {
+    float unit_l, unit_d, unit_t, unit_m, unit_v;
+    float a_exp, H0, omega_m, omega_l, omega_k, omega_b;
 };
 
 using namespace std;
 
-class Simu 
-{
+class Simu {
 public:
     Simu();
-    Simu(int const Boxlen, int const Npart,string const cosmo,int const output);
-    virtual ~Simu();
-   
-    bool load(int const Boxlen, int const Npart,string const cosmo,int output = -1);
-    string saveHalosPositions(const int min_particles = 0, const int max_particles = -1) const;
-    string saveVoidPositions(const float min_seuil = 0.0, const float mean_seuil = 0.0, const float max_density = 0.0)    const;
 
-    void profileAnalysis(const string position_file_name,const string output_name = "",int const NobjectsMax = -1);
-    
-    float getR1MassCoarseGrid(vector<float> & f_profile, vector<float> & r_ramses,bool isOverDensity);
-    float getR1DensityCoarseGrid(vector<float> & f_profile, vector<float> & r_ramses,bool isOverDensity);
-    
+    Simu(int const Boxlen, int const Npart, string const cosmo, int const output);
+
+    virtual ~Simu();
+
+    bool load(int const Boxlen, int const Npart, string const cosmo, int output = -1);
+
+    string saveHalosPositions(const int min_particles = 0, const int max_particles = -1) const;
+
+    string saveVoidPositions(const float min_seuil = 0.0, const float mean_seuil = 0.0,
+                             const float max_density = 0.0) const;
+
+    void profileAnalysis(const string position_file_name, const string output_name = "", int const NobjectsMax = -1);
+
+    void zHaloProfileAnalysis(const vector<int> outputs, const int min_particles = 0, const int max_particles = -1, const string output_name = "", int const NobjectsMax = -1);
+
+    float getR1MassCoarseGrid(vector<float> &f_profile, vector<float> &r_ramses, bool isOverDensity);
+
+    float getR1DensityCoarseGrid(vector<float> &f_profile, vector<float> &r_ramses, bool isOverDensity);
+
     //setters et getters
-    void setDataDirectory(const string data){
+    void setDataDirectory(const string data) {
         _data_path = data;
     }
-    string getDataDirectory()   const{return _data_path;}
-    void setMinimumFilesDirectory(const string path){
+
+    string getDataDirectory() const { return _data_path; }
+
+    void setMinimumFilesDirectory(const string path) {
         _minimum_file_path = path;
     }
-    string getMinimumFilesDirectory()   const{ return _minimum_file_path;}
-    void setIsOverDensity(bool isOverDensity){ _isOverDensity = isOverDensity;}
-    bool isOverDensity(){return _isOverDensity;}
-    int getBoxlen() const{return _boxlen;}
-    int getNpart()  const{return _npart;}
-    string getCosmo()   const{return _cosmo;}
-    int getOutput() const{return _output;}
-    
-    void setRadiusInterval(const float rmin,const float rmax, const int Npints);
-    
-    void setNumpyCores(int nc){ _Numpy_cores = nc;}
-    
-    void setDrCoarseGrid(float dr){ _DrCoarseGrid = dr;}
-    void setRmaxCoarseGrid(float Rmax){ _RmaxCoarseGrid = Rmax;}
-    void setR0CoarseGrid(float r0){ _R0CoarseGrid = r0;}
-    
 
-    
-private:    
-    void ProfileAroundPosition(FVector Position ,vector<float> & f,vector<float> & v,FOFMultiCube & multi,vector<float> const radius_ramses);
-    void PeculiarSpeedAroundPosition(FVector Position, FVector & speed,FOFMultiCube & multi, float const radius_ramses);
+    string getMinimumFilesDirectory() const { return _minimum_file_path; }
 
-    bool getParticlesPositions(FOFMultiCube & multi,vector<long long> & index, vector<float> & X, vector<float> & Y, vector<float> & Z, FVector guess_CoM) const;
-    
+    void setIsOverDensity(bool isOverDensity) { _isOverDensity = isOverDensity; }
+
+    bool isOverDensity() { return _isOverDensity; }
+
+    int getBoxlen() const { return _boxlen; }
+
+    int getNpart() const { return _npart; }
+
+    string getCosmo() const { return _cosmo; }
+
+    int getOutput() const { return _output; }
+
+    void setRadiusInterval(const float rmin, const float rmax, const int Npints);
+
+    void setNumpyCores(int nc) { _Numpy_cores = nc; }
+
+    void setDrCoarseGrid(float dr) { _DrCoarseGrid = dr; }
+
+    void setRmaxCoarseGrid(float Rmax) { _RmaxCoarseGrid = Rmax; }
+
+    void setR0CoarseGrid(float r0) { _R0CoarseGrid = r0; }
+
+
+private:
+    void ProfileAroundPosition(FVector Position, vector<float> &f, vector<float> &v, FOFMultiCube &multi,
+                               vector<float> const radius_ramses);
+
+    void PeculiarSpeedAroundPosition(FVector Position, FVector &speed, FOFMultiCube &multi, float const radius_ramses);
+
+    bool getParticlesCoM(FOFMultiCube & multi,const vector<long long> & index, FVector &new_CoM, FVector guess_CoM) const;
+
+    vector<FVector> getNewHaloCOM(FOFMultiCube & multi, const vector< vector<long long> > particles_per_halo, const vector<FVector> previous_COM) const;
+
     //les propriétés de la simu
-    string _data_path,_minimum_file_path,_save_name,_cosmo;
+    string _data_path, _minimum_file_path, _save_name, _cosmo;
     string _simu_name;
-    int _boxlen,_npart,_output,_Numpy_cores;
+    int _boxlen, _npart, _output, _Numpy_cores;
     bool _isOverDensity;
-    
+
     //les propriétés physiques de la simu
     SimuData _data;
-    
+
     //les constantes physiques
-    float Mpc,c0,SunMass; 
-    
+    float Mpc, c0, SunMass;
+
     //les constantes de tracage
-    float _DrCoarseGrid,_R0CoarseGrid,_RmaxCoarseGrid;
+    float _DrCoarseGrid, _R0CoarseGrid, _RmaxCoarseGrid;
 };
 
 #endif	/* SIMU_H */

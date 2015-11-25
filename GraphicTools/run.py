@@ -24,8 +24,35 @@
 
 from DEUSProfile import*
 from DEUSDensity import*
+from DEUSExtremaGraphics_new import*
 
+#test de la FFT
+
+test = DEUSExtremaGraphics()
+Rs = 0
+test.dir = "/home/pdefromont/advil/data/home/pdefromont/code/DEUS-EX-Machina/compute_extrema/data/"
+test.dirj = "/home/pdefromont/advil/data/home/jpasdeloup/DEUS-EX-Machina/compute_extrema/data/"
+dr,Pr = test.loadGlob("boxlen648_n256_rpcdmw5", "6", str(Rs))
+d,P = test.loadGlob("boxlen648_n256_rpcdmw5", "6", str(Rs), "_after")
+dm,Pm = test.loadMin("boxlen648_n256_rpcdmw5", "6", str(Rs))
+dmr,Pmr = test.loadMin("boxlen648_n256_rpcdmw5", "6", str(Rs), "_after")
+
+figure(1)
+grid(True)
+plot(dr,Pr,'b-',label='ref')
+plot(d,P,'r+',label='FFT')
+legend()
+
+figure(2)
+grid(True)
+plot(dmr,Pmr,'b+',label='ref')
+plot(dm,Pm,'r+',label='FFT')
+legend()
+show()
+
+"""
 test = DEUSDensity()
+
 #test.Load("boxlen648_n1024_lcdmw5_Z93_S2")
 test.Load("boxlen2592_n1024_lcdmw5_Z56_S1")
 d0,P0 = test._dmin[-150:] + 1.,test._minPDF[-150:]
@@ -51,6 +78,7 @@ plot(dt,Pt,'r-')
 plot(dtheo_evo,Ndtheo_evo,'g-')
 show()
 
+"""
 """
 test = DEUSGraphics(1100.)
 r1_tab = [15.,20.,50.,100.]

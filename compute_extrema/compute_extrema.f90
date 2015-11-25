@@ -12,7 +12,7 @@ program compute_extrema
 
     !  use grafic_types
     !  use grafic_io
-    !  use transform
+    
     use modpart2extrema    
     use common_var_ramses
     use modio
@@ -55,7 +55,7 @@ program compute_extrema
     integer(i4b) :: i, j, k, ifiles
     integer(i4b) :: iargc
 
-    integer(i8b) :: plan
+    integer(i8b) :: plan, backplan
 #ifdef DOUB
     real(dp), allocatable, dimension(:) :: buffer
 #else
@@ -167,6 +167,8 @@ program compute_extrema
     ! Get local buffer sizes, and prepare fft forward plan
     call rfftw3d_f77_mpi_create_plan(plan, mpi_comm_world, nx, ny&
     &, nz, fftw_real_to_complex, fftw_estimate)
+    call rfftw3d_f77_mpi_create_plan(backplan,mpi_comm_world,nx,ny,nz, &
+       fftw_complex_to_real, fftw_estimate)
     call rfftwnd_f77_mpi_local_sizes(plan, local_nz, local_z_start&
     &, local_ny, local_y_start, total_local_size)
 
@@ -208,7 +210,7 @@ program compute_extrema
     !Compute density using CIC
     if (myid == 0)write(*, *) 'part2extrema: Read particles and compute density in slices using CIC'
   
-    call part2extrema(myid, xxmin, xxmax, yymin, yymax, zmincube, zmaxcube, zminwithdzcoarse, zmaxwithdzcoarse, nx, ny, nz, local_nz, nproc, filterScale)
+    call part2extrema(myid, xxmin, xxmax, yymin, yymax, zmincube, zmaxcube, zminwithdzcoarse, zmaxwithdzcoarse, nx, ny, nz, local_nz, nproc, filterScale, plan, backplan, total_local_size, local_z_start)
     call getmem(real_mem)
     call MPI_ALLREDUCE(real_mem,mempart2cube2 ,1,MPI_REAL,MPI_MAX,MPI_COMM_WORLD,ierr)
     

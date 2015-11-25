@@ -19,6 +19,26 @@
 
 struct FVector{
     float x,y,z;
+
+    FVector(){
+        x = 0.0, y = 0.0, z = 0.0;
+    }
+    FVector(float X, float Y, float Z){
+        x = X, y = Y, z = Z;
+    }
+    void set(const float X, const float Y, const float_t Z){
+        x = X, y = Y, z = Z;
+    }
+    bool is(const float X,const float Y ,const float Z) const{
+        return x==X && y==Y && z== Z;
+    }
+
+    bool operator!=(const FVector& f1) const{
+        return !(f1.x == x && f1.y == y && f1.z == z);
+    }
+    bool operator==(const FVector& f1) const{
+        return f1.x == x && f1.y == y && f1.z == z;
+    }
 };
 
 class Tools{

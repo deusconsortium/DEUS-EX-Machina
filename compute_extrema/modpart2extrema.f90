@@ -2,6 +2,7 @@ Module modpart2extrema
 
     Use modconst
     use common_var_ramses
+    use modsmooth_field
 
    type extremaList
         type(extremaList), pointer :: next
@@ -12,11 +13,13 @@ Module modpart2extrema
 contains
 
 
-    subroutine part2extrema(myid, xmin, xmax, ymin, ymax, zmincube, zmaxcube, zminwithdzcoarse, zmaxwithdzcoarse, nx, ny, nz, local_nz, nproc, filterScale)
+    subroutine part2extrema(myid, xmin, xmax, ymin, ymax, zmincube, zmaxcube, zminwithdzcoarse, zmaxwithdzcoarse, nx, ny, nz, local_nz, nproc, filterScale, plan, backplan, total_local_size, local_z_start)
         !  use common_var_ramses,only:cpu_list,cpu_read,ncpu_read,nchar,rep,cubeout
         use modvariable
         use modio, only:ramses_lecture
         implicit none
+        integer(i8b) :: plan, backplan
+        integer(i4b) :: total_local_size, local_z_start
         Integer(kind = 4) :: mpierr
         integer :: myid, nproc
         integer :: ncpu, ndim, npart, ngrid, n, i, j, k, l, icpu, ipos, igroup
@@ -35,20 +38,20 @@ contains
 #ifdef DOUB    
         real(dp), dimension(:,:,:), allocatable :: cube
         !Smoothed cube
-        real(dp), dimension(:,:,:), allocatable :: Smoothedcube
+        !real(dp), dimension(:,:,:), allocatable :: Smoothedcube
         real(dp), dimension(:), allocatable :: tempBufferCube
 #else
         real(sp), dimension(:,:,:), allocatable :: cube
-        real(sp), dimension(:,:,:), allocatable :: Smoothedcube
+        !real(sp), dimension(:,:,:), allocatable :: Smoothedcube
         real(sp), dimension(:), allocatable :: tempBufferCube
 #endif
 
         !les parametres pour le filtrage gaussien
         !-----------------
-        real(sp), dimension(:,:,:), allocatable :: FilterMatrix
-        integer, dimension(:), allocatable :: shiftx
-        integer, dimension(:), allocatable :: shifty
-        integer, dimension(:), allocatable :: shiftz
+        !real(sp), dimension(:,:,:), allocatable :: FilterMatrix
+        !integer, dimension(:), allocatable :: shiftx
+        !integer, dimension(:), allocatable :: shifty
+        !integer, dimension(:), allocatable :: shiftz
         real :: filterScale! such as filtering is on exp(-1/2*(x/filterScale)^2)
         integer :: SmoothBuffer, totalBuffer! the number of buffered cells of +/- z direction used for smoothing
         !-----------------
@@ -124,7 +127,8 @@ contains
         !----------Smoothing part------------------
 
         !SmoothBuffer ; number of neighbours cells to take into account for the smoothing (in each direction)
-        SmoothBuffer = ceiling(3.0 * filterScale)
+        !SmoothBuffer = ceiling(3.0 * filterScale)
+        SmoothBuffer = 0
 
         !CUSTOM to manage Smooth + minimum search
         totalBuffer = SmoothBuffer + 1
@@ -140,45 +144,7 @@ contains
         !The region to compute the cube is different from the region to select particule!!!!
         zmin = zminwithdzcoarse
         zmax = zmaxwithdzcoarse
-
-!        if (myid == 0) write(*, *) 'input infos custom =', myid, xmin, xmax, ymin, ymax, zmincube, zmaxcube, zminwithdzcoarse, zmaxwithdzcoarse, nx, ny, nz,local_nz,nproc
-
-        !Allocate the smoothing matrix
-        allocate(FilterMatrix(1:2 * SmoothBuffer + 1, 1:2 * SmoothBuffer + 1, 1:2 * SmoothBuffer + 1))
-        !Smoothedcube includes the extra +/-1 buffer for extremum computation
-        allocate(Smoothedcube(0:nx, 0:ny, 0:local_nz - 2 * SmoothBuffer))
-        Smoothedcube = 0.
-        !Allocate the shift_xyz tabs 
-        allocate(shiftx(1:1 + 2 * SmoothBuffer))
-        allocate(shifty(1:1 + 2 * SmoothBuffer))
-        allocate(shiftz(1:1 + 2 * SmoothBuffer))
-
-        seuil = 0.
-        do i = 1, 2 * SmoothBuffer + 1
-            do j = 1, 2 * SmoothBuffer + 1
-                do k = 1, 2 * SmoothBuffer + 1
-                    !Gaussian filtering exp(-(r-r0)^2/(2*Rf^2))
-                    FilterMatrix(i, j, k) = exp(-0.5 * ((1. + SmoothBuffer - i)*(1. + SmoothBuffer - i)&
-                    &+(1. + SmoothBuffer - j)*(1. + SmoothBuffer - j)&
-                    &+(1. + SmoothBuffer - k)*(1. + SmoothBuffer - k))/(filterScale * filterScale))
-                    seuil = seuil + FilterMatrix(i, j, k)
-                enddo
-            enddo
-        enddo
-        !normalisation
-        FilterMatrix = FilterMatrix/seuil
         
-!        do i = 0, 12
-!            write (*,*) i, SmoothBuffer(0, 0, i)
-!        enddo
-!            
-!        call exit(0)
-
-        !saving the filtering scale
-        open(unit = 10, file = trim('data/info.txt'), status = 'unknown')
-        write(10, *) '#gaussian filtering scale in Ramses unit'
-        write(10, *) filterScale/real(nx)
-        close(10)
         !---------------------------------------------
 
         !Read one time each file and communicates so that every processor gets particles with zmin zmax
@@ -371,70 +337,44 @@ contains
         !smoothing the spectrum with a gaussian window
         if (myid == 0)write(*, *) 'Smoothing the field with a gaussian window function'
         
-        do ix = 0, nx - 1
-            do i = 1, 1 + 2 * SmoothBuffer
-                shiftx(i) = ix + i - 1 - SmoothBuffer
-                if (shiftx(i) < 0) shiftx(i) = shiftx(i) + nx
-                if (shiftx(i) >= nx) shiftx(i) = shiftx(i) - nx
-            enddo
-            do iy = 0, ny - 1
-                do i = 1, 1 + 2 * SmoothBuffer
-                    shifty(i) = iy + i - 1 - SmoothBuffer
-                    if (shifty(i) < 0) shifty(i) = shifty(i) + ny
-                    if (shifty(i) >= ny) shifty(i) = shifty(i) - ny
-                enddo
-                do iz = 0, local_nz - 1 - 2 * (SmoothBuffer)
-                    do i = 1, 1 + 2 * SmoothBuffer
-                        shiftz(i) = iz + i - 1
-                    enddo
-                    !Computing the smoothed field
-                    if (SmoothBuffer == 0) then
-                        Smoothedcube(ix, iy, iz) = cube(ix, iy, iz + SmoothBuffer)
-                    else
-                        Smoothedcube(ix, iy, iz) = 0.0
-                        do i = 1, 1 + 2 * SmoothBuffer
-                            do j = 1, 1 + 2 * SmoothBuffer
-                                do k = 1, 1 + 2 * SmoothBuffer
-                                    Smoothedcube(ix, iy, iz) = Smoothedcube(ix, iy, iz) + cube(shiftx(i), shifty(j), shiftz(k)) * FilterMatrix(i, j, k)
-                                enddo
-                            enddo
-                        enddo
-                    endif
-                enddo
-            enddo
-        enddo
-        
-        !Deallocate
-        deallocate(cube)
+        call smooth_field(plan, backplan,total_local_size, filterScale,cube,nx,ny,nz,local_nz,local_z_start)
+		
+		call mpi_barrier(mpi_comm_world,ierr)
         
         ! ----------------------
         ! GENERATE DENSITY HISTO
         ! ----------------------
         nb_histo = 1000
         
-        allocate(density_histo(0:nb_histo-1))
+       allocate(density_histo(0:nb_histo))
         
         density_histo=0
         
+        k = 0
         do iz = 1, usable_local_nz            
             do ix = 0, nx - 1                
                 do iy = 0, ny - 1
-                    rank_histo = floor(nb_histo*min(Smoothedcube(ix, iy, iz),3.0)/3.0)
-                    density_histo(rank_histo) = density_histo(rank_histo) + 1
+                    rank_histo = floor(nb_histo*min(cube(ix, iy, iz),3.0)/3.0)  
+                    if(rank_histo < 0) then
+						write(*,*) "error : rank_histo = ",rank_histo
+					else
+						density_histo(rank_histo) = density_histo(rank_histo) + 1
+					endif
                 enddo
             enddo
         enddo
         
-        density_histo = density_histo * nb_histo / sum(density_histo(0:nb_histo-1)) / nproc
+        density_histo = density_histo * nb_histo / sum(density_histo(0:nb_histo)) / nproc
         
-        allocate(all_density_histo(0:nb_histo-1, 0:nproc-1))
-        call MPI_Gather(density_histo, nb_histo, MPI_Type, all_density_histo, nb_histo, MPI_Type, 0, MPI_comm_world, mpierr)
+        allocate(all_density_histo(0:nb_histo, 0:nproc-1))
+		all_density_histo = 0
+        call MPI_Gather(density_histo, nb_histo + 1, MPI_Type, all_density_histo, nb_histo + 1, MPI_Type, 0, MPI_comm_world, mpierr)
         
         if(myid == 0) then
             density_histo = sum(all_density_histo,2)
-            nomfich = 'data/' // trim(outputfile) // '/' // trim(outputfile) // '_all.deus_histo.txt'        
+            nomfich = 'data/' // trim(outputfile) // '/' // trim(outputfile) // '_all_after.deus_histo.txt'        
             open (unit = 3, file = nomfich)
-            do iz = 0, nb_histo-1
+            do iz = 0, nb_histo
                 write(3,*) density_histo(iz)
             enddo
             close(unit=3)
@@ -474,45 +414,45 @@ contains
                     if (iy == ny - 1) iyp1 = 0
                     !using the +/- 1 buffer region for the local extremum computation
                     
-                    if (Smoothedcube(ix, iy, iz) > 0.0 .and. Smoothedcube(ix, iy, iz) < 1.0) then
+                    if (cube(ix, iy, iz) > 0.0 .and. cube(ix, iy, iz) < 1.0) then
 
                         !computing the minimum of the neighbour treshold
-                        seuil = 100.0 - Smoothedcube(ix, iy, iz)
+                        seuil = 100.0 - cube(ix, iy, iz)
 
                         seuil_moyen = 0.0
 
-                        neighbor_density(1) = Smoothedcube(ixm1, iym1, izm1)
-                        neighbor_density(2) = Smoothedcube(ixm1, iym1, iz)
-                        neighbor_density(3) = Smoothedcube(ixm1, iym1, izp1)
-                        neighbor_density(4) = Smoothedcube(ixm1, iy, izm1)
-                        neighbor_density(5) = Smoothedcube(ixm1, iy, iz)
-                        neighbor_density(6) = Smoothedcube(ixm1, iy, izp1)
-                        neighbor_density(7) = Smoothedcube(ixm1, iyp1, izm1)
-                        neighbor_density(8) = Smoothedcube(ixm1, iyp1, iz)
-                        neighbor_density(9) = Smoothedcube(ixm1, iyp1, izp1)
+                        neighbor_density(1) = cube(ixm1, iym1, izm1)
+                        neighbor_density(2) = cube(ixm1, iym1, iz)
+                        neighbor_density(3) = cube(ixm1, iym1, izp1)
+                        neighbor_density(4) = cube(ixm1, iy, izm1)
+                        neighbor_density(5) = cube(ixm1, iy, iz)
+                        neighbor_density(6) = cube(ixm1, iy, izp1)
+                        neighbor_density(7) = cube(ixm1, iyp1, izm1)
+                        neighbor_density(8) = cube(ixm1, iyp1, iz)
+                        neighbor_density(9) = cube(ixm1, iyp1, izp1)
 
-                        neighbor_density(10) = Smoothedcube(ix, iym1, izm1)
-                        neighbor_density(11) = Smoothedcube(ix, iym1, iz)
-                        neighbor_density(12) = Smoothedcube(ix, iym1, izp1)
-                        neighbor_density(13) = Smoothedcube(ix, iy, izm1)
+                        neighbor_density(10) = cube(ix, iym1, izm1)
+                        neighbor_density(11) = cube(ix, iym1, iz)
+                        neighbor_density(12) = cube(ix, iym1, izp1)
+                        neighbor_density(13) = cube(ix, iy, izm1)
                         !neighbor_density(1) = Smoothedcube(ix, iy, iz)
-                        neighbor_density(14) = Smoothedcube(ix, iy, izp1)
-                        neighbor_density(15) = Smoothedcube(ix, iyp1, izm1)
-                        neighbor_density(16) = Smoothedcube(ix, iyp1, iz)
-                        neighbor_density(17) = Smoothedcube(ix, iyp1, izp1)
+                        neighbor_density(14) = cube(ix, iy, izp1)
+                        neighbor_density(15) = cube(ix, iyp1, izm1)
+                        neighbor_density(16) = cube(ix, iyp1, iz)
+                        neighbor_density(17) = cube(ix, iyp1, izp1)
 
-                        neighbor_density(18) = Smoothedcube(ixp1, iym1, izm1)
-                        neighbor_density(19) = Smoothedcube(ixp1, iym1, iz)
-                        neighbor_density(20) = Smoothedcube(ixp1, iym1, izp1)
-                        neighbor_density(21) = Smoothedcube(ixp1, iy, izm1)
-                        neighbor_density(22) = Smoothedcube(ixp1, iy, iz)
-                        neighbor_density(23) = Smoothedcube(ixp1, iy, izp1)
-                        neighbor_density(24) = Smoothedcube(ixp1, iyp1, izm1)
-                        neighbor_density(25) = Smoothedcube(ixp1, iyp1, iz)
-                        neighbor_density(26) = Smoothedcube(ixp1, iyp1, izp1)
+                        neighbor_density(18) = cube(ixp1, iym1, izm1)
+                        neighbor_density(19) = cube(ixp1, iym1, iz)
+                        neighbor_density(20) = cube(ixp1, iym1, izp1)
+                        neighbor_density(21) = cube(ixp1, iy, izm1)
+                        neighbor_density(22) = cube(ixp1, iy, iz)
+                        neighbor_density(23) = cube(ixp1, iy, izp1)
+                        neighbor_density(24) = cube(ixp1, iyp1, izm1)
+                        neighbor_density(25) = cube(ixp1, iyp1, iz)
+                        neighbor_density(26) = cube(ixp1, iyp1, izp1)
 
                         do i = 1, 26
-                            local_seuil = neighbor_density(i) - Smoothedcube(ix, iy, iz)
+                            local_seuil = neighbor_density(i) - cube(ix, iy, iz)
                             if (local_seuil < seuil) seuil = local_seuil
                             seuil_moyen = seuil_moyen + local_seuil
                         enddo
@@ -524,7 +464,7 @@ contains
                             curr%extremum(1) = (real(ix) + 0.5)/real(nx)
                             curr%extremum(2) = (real(iy) + 0.5)/real(ny)
                             curr%extremum(3) = (real(iz - 1 + usable_local_nz * myid) + 0.5)/real(nz)
-                            curr%extremum(4) = Smoothedcube(ix, iy, iz)
+                            curr%extremum(4) = cube(ix, iy, iz)
                             curr%extremum(5) = seuil
                             curr%extremum(6) = seuil_moyen
 
@@ -600,9 +540,9 @@ contains
         
         if(myid == 0) then
             density_histo = sum(all_density_histo,2)
-            nomfich = 'data/' // trim(outputfile) // '/' // trim(outputfile) // '_min.deus_histo.txt'        
+            nomfich = 'data/' // trim(outputfile) // '/' // trim(outputfile) // '_min_after.deus_histo.txt'        
             open (unit = 3, file = nomfich)
-            do iz = 0, nb_histo -1
+            do iz = 0, nb_histo
                 write(3,*) nb_histo * density_histo(iz) / total_minima
             enddo
             close(unit=3)
@@ -611,11 +551,12 @@ contains
         !deallocate
         deallocate(all_minima)
         deallocate(all_seuil0)
-        deallocate(Smoothedcube)
-        deallocate(FilterMatrix)
-        deallocate(shiftx)
-        deallocate(shifty)
-        deallocate(shiftz)
+        !deallocate(Smoothedcube)
+        deallocate(cube)
+       ! deallocate(FilterMatrix)
+        !deallocate(shiftx)
+        !deallocate(shifty)
+        !deallocate(shiftz)
 
         !CUSTOM to manage Smooth + minimum search
         local_nz = local_nz - (SmoothBuffer + 1) * 2

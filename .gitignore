@@ -5,4 +5,5 @@
 *.txt
 *.DEUSprofile
 nbproject/
+.idea/
 *~

@@ -30,15 +30,12 @@ else
 	LIBS = -L/usr/local/fftw-2.1.5-gnu/lib -lsrfftw_mpi -lsfftw_mpi -lsrfftw -lsfftw -limf -lm
 endif
 
-
-
 ifeq ($(MAKESLICES),SLICES)
-	OBJS = grafic_types.o common_var_ramses.o grafic_io.o modpart2extrema.o
+	OBJS = grafic_types.o common_var_ramses.o grafic_io.o transform.o modsmooth_field.o modpart2extrema.o
 else
-	OBJS = grafic_types.o parallel_io.o common_var_ramses.o grafic_io.o modpart2extrema.o
+	OBJS = grafic_types.o parallel_io.o common_var_ramses.o grafic_io.o transform.o modsmooth_field.o modpart2extrema.o
 endif
-MODS = grafic_types.mod grafic_io.mod common_var_ramses.mod
-
+MODS = grafic_types.mod grafic_io.mod common_var_ramses.mod modsmooth_field.mod transform.mod
 
 all:	compute_extrema
 
