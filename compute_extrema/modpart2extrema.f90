@@ -12,6 +12,30 @@ Module modpart2extrema
 
 contains
 
+	function getcube(i,j,k,cube,zp,zm,local_nz) result(density)
+		integer, intent(in) :: i,j,k,local_nz
+#ifdef DOUB    
+		real(dp), dimension(:,:,:), allocatable :: cube
+		real(dp), dimension(:,:), allocatable :: zp,zm
+		real(dp) :: density
+#else
+		real(sp), dimension(:,:,:), allocatable :: cube
+		real(sp), dimension(:,:), allocatable :: zp,zm
+		real(sp) :: density
+#endif
+		!write(*, *)"getcube with ",i,j,k
+		
+		if(k < 0) then
+			density = zm(i,j)
+		elseif(k >= local_nz) then
+			density = zp(i,j)
+		else
+			density = cube(i,j,k)
+		endif
+		
+		!write(*,*)'ok'
+		
+	end function getcube
 
     subroutine part2extrema(myid, xmin, xmax, ymin, ymax, zmincube, zmaxcube, zminwithdzcoarse, zmaxwithdzcoarse, nx, ny, nz, local_nz, nproc, filterScale, plan, backplan, total_local_size, local_z_start)
         !  use common_var_ramses,only:cpu_list,cpu_read,ncpu_read,nchar,rep,cubeout
@@ -37,12 +61,11 @@ contains
         real(8) :: xxmin, xxmax, yymin, yymax, zzmin, zzmax, dx, dy, dz, deltax
 #ifdef DOUB    
         real(dp), dimension(:,:,:), allocatable :: cube
-        !Smoothed cube
-        !real(dp), dimension(:,:,:), allocatable :: Smoothedcube
+        real(dp), dimension(:,:), allocatable :: zplus,zmoins
         real(dp), dimension(:), allocatable :: tempBufferCube
 #else
         real(sp), dimension(:,:,:), allocatable :: cube
-        !real(sp), dimension(:,:,:), allocatable :: Smoothedcube
+        real(sp), dimension(:,:), allocatable :: zplus,zmoins
         real(sp), dimension(:), allocatable :: tempBufferCube
 #endif
 
@@ -102,6 +125,8 @@ contains
       MPI_Type = MPI_Float
 #endif
       
+      
+      
       ! to gather results in multiprocs
       allocate(all_minima(0:nproc-1))
       call title(myid, ncharcpu)
@@ -123,6 +148,7 @@ contains
 
         !!! Assume constant mass (to save memory)
         mp = 1.d0  !1.d0/2.d0**(3. * info % levelmin)
+        !mp = 1.d0/2.d0**(3. * info % levelmin)
 
         !----------Smoothing part------------------
 
@@ -131,7 +157,7 @@ contains
         SmoothBuffer = 0
 
         !CUSTOM to manage Smooth + minimum search
-        totalBuffer = SmoothBuffer + 1
+        totalBuffer = 0
         usable_local_nz = local_nz
         local_nz = local_nz + totalBuffer * 2        
         zminwithdzcoarseold = zminwithdzcoarse
@@ -159,7 +185,11 @@ contains
         deallocate(xx)
 
         !Allocate cube to compute density
-        allocate(cube(0:nx, 0:ny, 0:local_nz))
+        allocate(cube(0:nx - 1, 0:ny - 1, 0:local_nz - 1))
+        allocate(tempBufferCube(0:nx*ny))
+		allocate(zplus(0:nx - 1,0:ny - 1))
+		allocate(zmoins(0:nx - 1,0:ny - 1))
+        
         cube = 0.
 
         !-----------------------------------------------
@@ -220,13 +250,13 @@ contains
                 if (ixp1 == nx) ixp1 = 0
                 if (iyp1 == ny) iyp1 = 0
 
-                if (iz + myid * usable_local_nz == 0.and.myid == nproc - 1) then
-                    iz = local_nz - totalBuffer -1
+                if (iz + myid * local_nz == 0.and.myid == nproc - 1) then
+                    iz = local_nz
                     nbA = nbA+1
                 endif
                 
-                if (izp1 == (nz + totalBuffer).and.myid == 0) then
-                    izp1 = totalBuffer
+                if (izp1 == (nz).and.myid == 0) then
+                    izp1 = 0
                     nbB = nbB+1
                 endif
 
@@ -252,83 +282,83 @@ contains
 
         deallocate(x)
 
-        ! exchange boundaries from extreme procs
-        Call Mpi_Barrier(MPI_comm_world,mpierr)
-        if(nproc == 1) then            
-            allocate(tempBufferCube(0:nx * ny * totalBuffer))
-            do ix = 0, nx - 1
-                do iy = 0, ny - 1
-                    do iz = 0, totalBuffer - 1
-                        tempBufferCube(ix * totalBuffer * ny + iy * totalBuffer + iz) = cube(ix, iy, totalBuffer + iz)
-                    enddo
-                enddo
-            enddo
-            do ix = 0, nx - 1
-                do iy = 0, ny - 1
-                    do iz = 0, totalBuffer - 1
-                        cube(ix, iy, local_nz - totalBuffer + iz) = tempBufferCube(ix * totalBuffer * ny + iy * totalBuffer + iz)
-                    enddo
-                enddo
-            enddo
-            do ix = 0, nx - 1
-                do iy = 0, ny - 1
-                    do iz = 0, totalBuffer - 1
-                        tempBufferCube(ix * totalBuffer * ny + iy * totalBuffer + iz) = cube(ix, iy, local_nz - totalBuffer * 2 + iz)
-                    enddo
-                enddo
-            enddo
-            do ix = 0, nx - 1
-                do iy = 0, ny - 1
-                    do iz = 0, totalBuffer - 1
-                        cube(ix, iy, iz) = tempBufferCube(ix * totalBuffer * ny + iy * totalBuffer + iz)
-                    enddo
-                enddo
-            enddo
-            deallocate(tempBufferCube)
-            
-        else
-
-            if (myid == 0) then                
-                allocate(tempBufferCube(0:nx*ny*totalBuffer))
-                do ix = 0, nx - 1
-                    do iy = 0, ny - 1
-                        do iz = 0, totalBuffer - 1
-                            tempBufferCube(ix*totalBuffer*ny+iy*totalBuffer+iz) = cube(ix, iy, totalBuffer+iz)
-                        enddo
-                    enddo
-                enddo
-                Call Mpi_Send(tempBufferCube, nx*ny*totalBuffer, MPI_Type, nproc -1, 0, MPI_comm_world,mpierr)            
-                Call Mpi_Recv(tempBufferCube, nx*ny*totalBuffer, MPI_Type, nproc -1, 0, MPI_comm_world,status,mpierr)
-                do ix = 0, nx - 1
-                    do iy = 0, ny - 1
-                        do iz = 0, totalBuffer - 1
-                            cube(ix, iy, iz) = tempBufferCube(ix*totalBuffer*ny+iy*totalBuffer+iz)
-                        enddo
-                    enddo
-                enddo            
-                deallocate(tempBufferCube)            
-            endif
-            if(myid == nproc -1) then                
-                allocate(tempBufferCube(0:nx*ny*totalBuffer))
-                Call Mpi_Recv(tempBufferCube, nx*ny*totalBuffer, MPI_Type, 0, 0, MPI_comm_world,status,mpierr)
-                do ix = 0, nx - 1
-                    do iy = 0, ny - 1
-                        do iz = 0, totalBuffer - 1
-                            cube(ix,iy,local_nz-totalBuffer+iz) = tempBufferCube(ix*totalBuffer*ny+iy*totalBuffer+iz)
-                        enddo
-                    enddo
-                enddo            
-                do ix = 0, nx - 1
-                    do iy = 0, ny - 1
-                        do iz = 0, totalBuffer - 1
-                            tempBufferCube(ix*totalBuffer*ny+iy*totalBuffer+iz) = cube(ix,iy,local_nz-totalBuffer*2+iz)
-                        enddo
-                    enddo
-                enddo
-                Call Mpi_Send(tempBufferCube, nx*ny*totalBuffer, MPI_Type, 0, 0, MPI_comm_world,mpierr)            
-                deallocate(tempBufferCube)            
-            endif
-        endif
+!~         ! exchange boundaries from extreme procs
+!~         Call Mpi_Barrier(MPI_comm_world,mpierr)
+!~         if(nproc == 1) then            
+!~             allocate(tempBufferCube(0:nx * ny * totalBuffer))
+!~             do ix = 0, nx - 1
+!~                 do iy = 0, ny - 1
+!~                     do iz = 0, totalBuffer - 1
+!~                         tempBufferCube(ix * totalBuffer * ny + iy * totalBuffer + iz) = cube(ix, iy, totalBuffer + iz)
+!~                     enddo
+!~                 enddo
+!~             enddo
+!~             do ix = 0, nx - 1
+!~                 do iy = 0, ny - 1
+!~                     do iz = 0, totalBuffer - 1
+!~                         cube(ix, iy, local_nz - totalBuffer + iz) = tempBufferCube(ix * totalBuffer * ny + iy * totalBuffer + iz)
+!~                     enddo
+!~                 enddo
+!~             enddo
+!~             do ix = 0, nx - 1
+!~                 do iy = 0, ny - 1
+!~                     do iz = 0, totalBuffer - 1
+!~                         tempBufferCube(ix * totalBuffer * ny + iy * totalBuffer + iz) = cube(ix, iy, local_nz - totalBuffer * 2 + iz)
+!~                     enddo
+!~                 enddo
+!~             enddo
+!~             do ix = 0, nx - 1
+!~                 do iy = 0, ny - 1
+!~                     do iz = 0, totalBuffer - 1
+!~                         cube(ix, iy, iz) = tempBufferCube(ix * totalBuffer * ny + iy * totalBuffer + iz)
+!~                     enddo
+!~                 enddo
+!~             enddo
+!~             deallocate(tempBufferCube)
+!~             
+!~         else
+!~ 
+!~             if (myid == 0) then                
+!~                 allocate(tempBufferCube(0:nx*ny*totalBuffer))
+!~                 do ix = 0, nx - 1
+!~                     do iy = 0, ny - 1
+!~                         do iz = 0, totalBuffer - 1
+!~                             tempBufferCube(ix*totalBuffer*ny+iy*totalBuffer+iz) = cube(ix, iy, totalBuffer+iz)
+!~                         enddo
+!~                     enddo
+!~                 enddo
+!~                 Call Mpi_Send(tempBufferCube, nx*ny*totalBuffer, MPI_Type, nproc -1, 0, MPI_comm_world,mpierr)            
+!~                 Call Mpi_Recv(tempBufferCube, nx*ny*totalBuffer, MPI_Type, nproc -1, 0, MPI_comm_world,status,mpierr)
+!~                 do ix = 0, nx - 1
+!~                     do iy = 0, ny - 1
+!~                         do iz = 0, totalBuffer - 1
+!~                             cube(ix, iy, iz) = tempBufferCube(ix*totalBuffer*ny+iy*totalBuffer+iz)
+!~                         enddo
+!~                     enddo
+!~                 enddo            
+!~                 deallocate(tempBufferCube)            
+!~             endif
+!~             if(myid == nproc -1) then                
+!~                 allocate(tempBufferCube(0:nx*ny*totalBuffer))
+!~                 Call Mpi_Recv(tempBufferCube, nx*ny*totalBuffer, MPI_Type, 0, 0, MPI_comm_world,status,mpierr)
+!~                 do ix = 0, nx - 1
+!~                     do iy = 0, ny - 1
+!~                         do iz = 0, totalBuffer - 1
+!~                             cube(ix,iy,local_nz-totalBuffer+iz) = tempBufferCube(ix*totalBuffer*ny+iy*totalBuffer+iz)
+!~                         enddo
+!~                     enddo
+!~                 enddo            
+!~                 do ix = 0, nx - 1
+!~                     do iy = 0, ny - 1
+!~                         do iz = 0, totalBuffer - 1
+!~                             tempBufferCube(ix*totalBuffer*ny+iy*totalBuffer+iz) = cube(ix,iy,local_nz-totalBuffer*2+iz)
+!~                         enddo
+!~                     enddo
+!~                 enddo
+!~                 Call Mpi_Send(tempBufferCube, nx*ny*totalBuffer, MPI_Type, 0, 0, MPI_comm_world,mpierr)            
+!~                 deallocate(tempBufferCube)            
+!~             endif
+!~         endif
       
         !-----------------------------------------------------
         ! Compute Minimums in the density field and save them
@@ -337,9 +367,10 @@ contains
         !smoothing the spectrum with a gaussian window
         if (myid == 0)write(*, *) 'Smoothing the field with a gaussian window function'
         
-        call smooth_field(plan, backplan,total_local_size, filterScale,cube,nx,ny,nz,local_nz,local_z_start)
-		
+        !call smooth_field(plan, backplan,total_local_size, filterScale,cube,nx,ny,nz,local_nz,local_z_start)
 		call mpi_barrier(mpi_comm_world,ierr)
+		
+		
         
         ! ----------------------
         ! GENERATE DENSITY HISTO
@@ -351,7 +382,7 @@ contains
         density_histo=0
         
         k = 0
-        do iz = 1, usable_local_nz            
+        do iz = 0, local_nz - 1            
             do ix = 0, nx - 1                
                 do iy = 0, ny - 1
                     rank_histo = floor(nb_histo*min(cube(ix, iy, iz),3.0)/3.0)  
@@ -382,6 +413,17 @@ contains
         
         
         ! ----------------------
+        ! EXCHANGING Zp/m BUFFERS
+        ! ----------------------
+        
+        if (nproc == 1)then
+			zmoins = cube(:,:,local_nz - 1)
+			zplus = cube(:,:,0)
+		else
+			write(*, *) 'pas content, pas content, pas content. Pas content'
+		endif
+        
+        ! ----------------------
         ! COMPUTE MINIMA
         ! ----------------------
                        
@@ -396,7 +438,7 @@ contains
         list%next => list        
         curr => list
         
-        do iz = 1, usable_local_nz
+        do iz = 0, local_nz - 1
             izm1 = iz - 1
             izp1 = iz + 1
             
@@ -418,38 +460,41 @@ contains
 
                         !computing the minimum of the neighbour treshold
                         seuil = 100.0 - cube(ix, iy, iz)
+                        
+                        !write(*, *)ix,iy,iz
 
                         seuil_moyen = 0.0
 
-                        neighbor_density(1) = cube(ixm1, iym1, izm1)
-                        neighbor_density(2) = cube(ixm1, iym1, iz)
-                        neighbor_density(3) = cube(ixm1, iym1, izp1)
-                        neighbor_density(4) = cube(ixm1, iy, izm1)
-                        neighbor_density(5) = cube(ixm1, iy, iz)
-                        neighbor_density(6) = cube(ixm1, iy, izp1)
-                        neighbor_density(7) = cube(ixm1, iyp1, izm1)
-                        neighbor_density(8) = cube(ixm1, iyp1, iz)
-                        neighbor_density(9) = cube(ixm1, iyp1, izp1)
+                        neighbor_density(1) = getcube(ixm1, iym1, izm1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(2) = getcube(ixm1, iym1, iz, cube, zplus, zmoins, local_nz)
+                        neighbor_density(3) = getcube(ixm1, iym1, izp1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(4) = getcube(ixm1, iy, izm1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(5) = getcube(ixm1, iy, iz, cube, zplus, zmoins, local_nz)
+                        neighbor_density(6) = getcube(ixm1, iy, izp1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(7) = getcube(ixm1, iyp1, izm1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(8) = getcube(ixm1, iyp1, iz, cube, zplus, zmoins, local_nz)
+                        neighbor_density(9) = getcube(ixm1, iyp1, izp1, cube, zplus, zmoins, local_nz)
 
-                        neighbor_density(10) = cube(ix, iym1, izm1)
-                        neighbor_density(11) = cube(ix, iym1, iz)
-                        neighbor_density(12) = cube(ix, iym1, izp1)
-                        neighbor_density(13) = cube(ix, iy, izm1)
-                        !neighbor_density(1) = Smoothedcube(ix, iy, iz)
-                        neighbor_density(14) = cube(ix, iy, izp1)
-                        neighbor_density(15) = cube(ix, iyp1, izm1)
-                        neighbor_density(16) = cube(ix, iyp1, iz)
-                        neighbor_density(17) = cube(ix, iyp1, izp1)
+                        neighbor_density(10) = getcube(ix, iym1, izm1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(11) = getcube(ix, iym1, iz, cube, zplus, zmoins, local_nz)
+                        neighbor_density(12) = getcube(ix, iym1, izp1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(13) = getcube(ix, iy, izm1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(14) = getcube(ix, iy, izp1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(15) = getcube(ix, iyp1, izm1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(16) = getcube(ix, iyp1, iz, cube, zplus, zmoins, local_nz)
+                        neighbor_density(17) = getcube(ix, iyp1, izp1, cube, zplus, zmoins, local_nz)
+                        
+                        neighbor_density(18) = getcube(ixp1, iym1, izm1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(19) = getcube(ixp1, iym1, iz, cube, zplus, zmoins, local_nz)
+                        neighbor_density(20) = getcube(ixp1, iym1, izp1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(21) = getcube(ixp1, iy, izm1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(22) = getcube(ixp1, iy, iz, cube, zplus, zmoins, local_nz)
+                        neighbor_density(23) = getcube(ixp1, iy, izp1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(24) = getcube(ixp1, iyp1, izm1, cube, zplus, zmoins, local_nz)
+                        neighbor_density(25) = getcube(ixp1, iyp1, iz, cube, zplus, zmoins, local_nz)
+                        neighbor_density(26) = getcube(ixp1, iyp1, izp1, cube, zplus, zmoins, local_nz)
 
-                        neighbor_density(18) = cube(ixp1, iym1, izm1)
-                        neighbor_density(19) = cube(ixp1, iym1, iz)
-                        neighbor_density(20) = cube(ixp1, iym1, izp1)
-                        neighbor_density(21) = cube(ixp1, iy, izm1)
-                        neighbor_density(22) = cube(ixp1, iy, iz)
-                        neighbor_density(23) = cube(ixp1, iy, izp1)
-                        neighbor_density(24) = cube(ixp1, iyp1, izm1)
-                        neighbor_density(25) = cube(ixp1, iyp1, iz)
-                        neighbor_density(26) = cube(ixp1, iyp1, izp1)
+						!write(*, *) "done"
 
                         do i = 1, 26
                             local_seuil = neighbor_density(i) - cube(ix, iy, iz)
@@ -501,7 +546,7 @@ contains
         
         
         !write(*, *) 'for proc', myid, 'total minimums', nb_minima, 'with seuil=0', nb_seuil0        
-        !write(*, *) 'Real mass proc', myid, sum(Smoothedcube(0:nx - 1, 0:ny - 1, 1:usable_local_nz - 1))
+        write(*, *) 'Real mass proc', myid, sum(cube(0:nx - 1, 0:ny - 1, 0:local_nz - 1))
         
         allocate(all_seuil0(0:nproc-1))
         
@@ -525,7 +570,7 @@ contains
         ! ----------------------
         ! GENERATE MINIMA DENSITY HISTO
         ! ----------------------
-                
+         
         density_histo=0
         all_density_histo=0
         
@@ -551,15 +596,10 @@ contains
         !deallocate
         deallocate(all_minima)
         deallocate(all_seuil0)
-        !deallocate(Smoothedcube)
         deallocate(cube)
-       ! deallocate(FilterMatrix)
-        !deallocate(shiftx)
-        !deallocate(shifty)
-        !deallocate(shiftz)
-
-        !CUSTOM to manage Smooth + minimum search
-        local_nz = local_nz - (SmoothBuffer + 1) * 2
+        
+        
+        !local_nz = local_nz - (SmoothBuffer + 1) * 2
         zminwithdzcoarse = zminwithdzcoarseold
         zmaxwithdzcoarse = zmaxwithdzcoarseold
 
