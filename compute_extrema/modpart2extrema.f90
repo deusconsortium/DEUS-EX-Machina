@@ -405,14 +405,14 @@ contains
         enddo
         
         !Deallocate
-        deallocate(cube)
+        !deallocate(cube)
         
         ! ----------------------
         ! GENERATE DENSITY HISTO
         ! ----------------------
         nb_histo = 1000
         
-        allocate(density_histo(0:nb_histo-1))
+        allocate(density_histo(0:nb_histo))
         
         density_histo=0
         
@@ -425,22 +425,21 @@ contains
             enddo
         enddo
         
-        density_histo = density_histo * nb_histo / sum(density_histo(0:nb_histo-1)) / nproc
+        density_histo = density_histo * nb_histo / sum(density_histo(0:nb_histo)) / nproc
         
-        allocate(all_density_histo(0:nb_histo-1, 0:nproc-1))
-        call MPI_Gather(density_histo, nb_histo, MPI_Type, all_density_histo, nb_histo, MPI_Type, 0, MPI_comm_world, mpierr)
+        allocate(all_density_histo(0:nb_histo, 0:nproc-1))
+        call MPI_Gather(density_histo, nb_histo + 1, MPI_Type, all_density_histo, nb_histo + 1, MPI_Type, 0, MPI_comm_world, mpierr)
         
         if(myid == 0) then
             density_histo = sum(all_density_histo,2)
             nomfich = 'data/' // trim(outputfile) // '/' // trim(outputfile) // '_all.deus_histo.txt'        
             open (unit = 3, file = nomfich)
-            do iz = 0, nb_histo-1
+            do iz = 0, nb_histo
                 write(3,*) density_histo(iz)
             enddo
             close(unit=3)
         endif
-        
-        
+                
         ! ----------------------
         ! COMPUTE MINIMA
         ! ----------------------
@@ -561,7 +560,8 @@ contains
         
         
         !write(*, *) 'for proc', myid, 'total minimums', nb_minima, 'with seuil=0', nb_seuil0        
-        !write(*, *) 'Real mass proc', myid, sum(Smoothedcube(0:nx - 1, 0:ny - 1, 1:usable_local_nz - 1))
+        write(*, *) 'Raw Mass proc', myid, sum(cube(0:nx - 1, 0:ny - 1, SmoothBuffer:local_nz - 1 - (SmoothBuffer)))
+        write(*, *) 'Smooth mass proc', myid, sum(Smoothedcube(0:nx - 1, 0:ny - 1, 1:usable_local_nz))
         
         allocate(all_seuil0(0:nproc-1))
         
@@ -596,13 +596,13 @@ contains
         
         !density_histo = density_histo / total_minima
         
-        call MPI_Gather(density_histo, nb_histo, MPI_Type, all_density_histo, nb_histo, MPI_Type, 0, MPI_comm_world, mpierr)
+        call MPI_Gather(density_histo, nb_histo +1, MPI_Type, all_density_histo, nb_histo+1, MPI_Type, 0, MPI_comm_world, mpierr)
         
         if(myid == 0) then
             density_histo = sum(all_density_histo,2)
             nomfich = 'data/' // trim(outputfile) // '/' // trim(outputfile) // '_min.deus_histo.txt'        
             open (unit = 3, file = nomfich)
-            do iz = 0, nb_histo -1
+            do iz = 0, nb_histo
                 write(3,*) nb_histo * density_histo(iz) / total_minima
             enddo
             close(unit=3)
