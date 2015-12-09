@@ -30,7 +30,7 @@ program compute_extrema
     
   ! Code identification
     character(len = *), parameter :: code = 'COMPUTE EXTREMA'
-    character(len = *), parameter :: version = '1.0'
+    character(len = *), parameter :: version = '1.1'
 
     ! Namelist (parameters) declaration
     integer(i4b), parameter :: nfilesmax = 20
@@ -211,6 +211,7 @@ program compute_extrema
     if (myid == 0)write(*, *) 'part2extrema: Read particles and compute density in slices using CIC'
   
     call part2extrema(myid, xxmin, xxmax, yymin, yymax, zmincube, zmaxcube, zminwithdzcoarse, zmaxwithdzcoarse, nx, ny, nz, local_nz, nproc, filterScale, plan, backplan, total_local_size, local_z_start)
+    
     call getmem(real_mem)
     call MPI_ALLREDUCE(real_mem,mempart2cube2 ,1,MPI_REAL,MPI_MAX,MPI_COMM_WORLD,ierr)
     
