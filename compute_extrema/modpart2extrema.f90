@@ -303,7 +303,7 @@ contains
 
         if (myid == 0) then
             density_histo = sum(all_density_histo, 2)
-            nomfich = 'data/' // trim(outputfile) // '/' // trim(outputfile) // '_all_after.deus_histo.txt'
+            nomfich = 'data/' // trim(outputfile) // '/' // trim(outputfile) // '_all.deus_histo.txt'
             open (unit = 3, file = nomfich)
             do iz = 0, nb_histo
                 write(3, *) density_histo(iz)
@@ -315,12 +315,33 @@ contains
         ! ----------------------
         ! EXCHANGING Zp/m BUFFERS
         ! ----------------------
-
-        if (nproc == 1)then
-            zmoins = cube(:,:, local_nz - 1)
-            zplus = cube(:,:, 0)
-        else
-            write(*, *) 'pas content, pas content, pas content. Pas content'
+        if (nproc == 1)then  ! If only 1 proc
+            zplus = cube(:,:, 0) ! TAG 0
+            zmoins = cube(:,:, local_nz - 1) ! TAG 1
+            
+        else ! Multiproc
+            if(myid == 0) then ! First proc
+                Call Mpi_Send(cube(:,:, 0), nx*ny, MPI_Type, nproc -1, 0, MPI_comm_world, mpierr)
+                Call Mpi_Send(cube(:,:, local_nz - 1), nx*ny, MPI_Type, 1, 1, MPI_comm_world, mpierr)
+                
+                Call Mpi_Recv(zplus, nx*ny, MPI_Type, 1, 0, MPI_comm_world, status, mpierr)
+                Call Mpi_Recv(zmoins, nx*ny, MPI_Type, nproc -1, 1, MPI_comm_world, status, mpierr)
+            
+            elseif(myid == nproc -1) then  ! Last proc
+                Call Mpi_Recv(zplus, nx*ny, MPI_Type, 0, 0, MPI_comm_world, status, mpierr)
+                Call Mpi_Recv(zmoins, nx*ny, MPI_Type, myid - 1, 1, MPI_comm_world, status, mpierr)
+                
+                Call Mpi_Send(cube(:,:, 0), nx*ny, MPI_Type, myid - 1, 0, MPI_comm_world, mpierr)                
+                Call Mpi_Send(cube(:,:, local_nz - 1), nx*ny, MPI_Type, 0, 1, MPI_comm_world, mpierr)                
+             
+            else ! Other procs
+                Call Mpi_Recv(zmoins, nx*ny, MPI_Type, myid - 1, 1, MPI_comm_world, status, mpierr)
+                Call Mpi_Send(cube(:,:, local_nz - 1), nx*ny, MPI_Type, myid + 1, 1, MPI_comm_world, mpierr)
+                
+                Call Mpi_Send(cube(:,:, 0), nx*ny, MPI_Type, myid - 1, 0, MPI_comm_world, mpierr)
+                Call Mpi_Recv(zplus, nx*ny, MPI_Type, myid + 1, 0, MPI_comm_world, status, mpierr)
+                
+            endif
         endif
 
         ! ----------------------
@@ -443,8 +464,8 @@ contains
 
         close(2)
 
-        write(*, *) 'for proc', myid, 'total minimums', nb_minima, 'with seuil=0', nb_seuil0        
-        write(*, *) 'Real mass proc', myid, sum(cube(0:nx - 1, 0:ny - 1, 0:local_nz - 1))/(nx * ny * local_nz)
+!        write(*, *) 'for proc', myid, 'total minimums', nb_minima, 'with seuil=0', nb_seuil0        
+!        write(*, *) 'Real mass proc', myid, sum(cube(0:nx - 1, 0:ny - 1, 0:local_nz - 1))/(nx * ny * local_nz)
 
 
         call MPI_Gather(nb_minima, 1, MPI_INTEGER, all_minima, 1, MPI_INTEGER, 0, MPI_comm_world, mpierr)
@@ -481,7 +502,7 @@ contains
 
         if (myid == 0) then
             density_histo = sum(all_density_histo, 2)
-            nomfich = 'data/' // trim(outputfile) // '/' // trim(outputfile) // '_min_after.deus_histo.txt'
+            nomfich = 'data/' // trim(outputfile) // '/' // trim(outputfile) // '_min.deus_histo.txt'
             open (unit = 3, file = nomfich)
             do iz = 0, nb_histo
                 write(3, *) nb_histo * density_histo(iz) / total_minima
